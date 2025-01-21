@@ -15,6 +15,7 @@ from typing import (
 
 import aiohttp
 
+from .exception import LlmException, RateLimitException
 from .model import (
     LlmCompletionMessage,
     LlmMessage,
@@ -67,10 +68,10 @@ class LLMInterface:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 429:
-                    raise Exception("API rate limit exceeded")
+                    raise RateLimitException("API rate limit exceeded")
                 if response.status != 200:
                     error_text = await response.text()
-                    raise Exception(
+                    raise LlmException(
                         f"OpenAI API status code {response.status}, error: {error_text}"
                     )
                 result = await response.json()
@@ -142,7 +143,7 @@ class LLMInterface:
                 new_messages.append(tool_message)
         logger.error("Max depth reached")
         if error_on_max_depth:
-            raise ValueError("Max depth reached")
+            raise LlmException("Max depth reached")
         return completion, new_messages
 
     @staticmethod

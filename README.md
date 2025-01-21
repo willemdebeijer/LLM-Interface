@@ -14,6 +14,7 @@ To add:
 - Retry
 - Metering
 - Parallel calls
+- Other LLM providers
 
 ## Examples
 
