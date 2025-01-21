@@ -2,6 +2,8 @@ from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel
 
+from llm_interface.llm import LlmFamily
+
 
 class LlmSystemMessage(BaseModel):
     role: Literal["system"] = "system"
@@ -32,7 +34,36 @@ class LlmCompletionMetadata(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     duration_seconds: float | None = None
-    model_name: str | None = None
+    llm_model_name: str | None = None
+    llm_family: LlmFamily | None = None
+
+    @property
+    def input_cost_usd(self) -> float | None:
+        if (
+            (llm_family := self.llm_family)
+            and (usd_per_1m_input_tokens := llm_family.usd_per_1m_input_tokens)
+            and (input_tokens := self.input_tokens)
+        ):
+            return usd_per_1m_input_tokens * input_tokens / 1_000_000
+        return None
+
+    @property
+    def output_cost_usd(self) -> float | None:
+        if (
+            (llm_family := self.llm_family)
+            and (usd_per_1m_output_tokens := llm_family.usd_per_1m_output_tokens)
+            and (output_tokens := self.output_tokens)
+        ):
+            return usd_per_1m_output_tokens * output_tokens / 1_000_000
+        return None
+
+    @property
+    def cost_usd(self) -> float | None:
+        if (input_cost_usd := self.input_cost_usd) and (
+            output_cost_usd := self.output_cost_usd
+        ):
+            return input_cost_usd + output_cost_usd
+        return None
 
 
 class LlmCompletionMessage(BaseModel):

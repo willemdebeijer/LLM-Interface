@@ -17,6 +17,7 @@ from typing import (
 import aiohttp
 
 from llm_interface.exception import LlmException, RateLimitException
+from llm_interface.llm import LlmFamily
 from llm_interface.model import (
     LlmCompletionMessage,
     LlmCompletionMetadata,
@@ -105,11 +106,14 @@ class LLMInterface:
 
         end_time = time.time()
         duration = end_time - start_time
+        llm_model_name = self.safe_nested_get(result, ("model",))
+        llm_family = LlmFamily.get_family_for_model_name(llm_model_name)
         metadata = LlmCompletionMetadata(
             input_tokens=self.safe_nested_get(result, ("usage", "prompt_tokens")),
             output_tokens=self.safe_nested_get(result, ("usage", "completion_tokens")),
             duration_seconds=duration,
-            model_name=self.safe_nested_get(result, ("model",)),
+            llm_model_name=llm_model_name,
+            llm_family=llm_family,
         )
         logger.debug(
             f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
