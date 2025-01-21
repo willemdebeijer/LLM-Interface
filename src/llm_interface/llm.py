@@ -1,6 +1,6 @@
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LlmFamily(BaseModel):
@@ -34,6 +34,10 @@ class LlmFamily(BaseModel):
             if model_name.startswith(family.name):
                 return family
         return None
+
+    model_config = ConfigDict(
+        exclude=["_families"],
+    )
 
 
 gpt_4o = LlmFamily(

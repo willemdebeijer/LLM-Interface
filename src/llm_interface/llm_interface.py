@@ -15,6 +15,7 @@ from typing import (
 )
 
 import aiohttp
+from pydantic import BaseModel
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.llm import LlmFamily
@@ -22,6 +23,7 @@ from llm_interface.model import (
     LlmCompletionMessage,
     LlmCompletionMetadata,
     LlmMessage,
+    LlmMultiMessageCompletion,
     LlmSystemMessage,
     LlmToolCall,
     LlmToolMessage,
@@ -76,7 +78,9 @@ class LLMInterface:
         if self.verbose:
             logger.debug("-" * 64)
             logger.debug(f"Calling OpenAI {model} with {len(messages)} messages")
-            logger.debug(f"Input messages:\n{self._format_for_log(messages)}")
+            logger.debug(
+                f"Input messages:\n{self._format_for_log(serialized_messages)}"
+            )
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
@@ -126,28 +130,33 @@ class LLMInterface:
 
     def _format_for_log(self, obj: Any, prefix: str = "   ") -> str:
         """Format an object for readable logging"""
-        if isinstance(obj, dict) or isinstance(obj, list):
-            return "\n".join(
-                prefix + line for line in json.dumps(obj, indent=2).splitlines()
-            )
+        try:
+            if isinstance(obj, dict) or isinstance(obj, list):
+                return "\n".join(
+                    prefix + line for line in json.dumps(obj, indent=2).splitlines()
+                )
+        except Exception as e:
+            pass
         return str(obj)
 
-    def get_auto_tool_completion(
+    async def get_auto_tool_completion(
         self,
         messages: list[dict[str, Any] | LlmMessage],
         model: str,
         temperature: float = 0.7,
         auto_execute_tools: list[Callable] = [],
         non_auto_execute_tools: list[Callable] = [],
-        max_depth: int = 5,
+        max_depth: int = 16,
         error_on_max_depth: bool = True,
-    ) -> tuple[LlmCompletionMessage, list[LlmMessage]]:
+    ) -> LlmMultiMessageCompletion:
         """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message)."""
+        start_time = time.time()
         if max_depth < 1:
             raise ValueError("Max depth must be at least 1.")
         new_messages: list[LlmMessage] = []
+        is_hit_max_depth = True
         for i in range(max_depth):
-            completion: LlmCompletionMessage = self.get_completion(
+            completion: LlmCompletionMessage = await self.get_completion(
                 messages=messages + new_messages,
                 model=model,
                 temperature=temperature,
@@ -155,7 +164,8 @@ class LLMInterface:
             )
             new_messages.append(completion)
             if not completion.tool_calls:
-                return completion, new_messages
+                is_hit_max_depth = False
+                break
             matched_tools = []
             for tool_call in completion.tool_calls:
                 tool: Optional[Callable] = next(
@@ -168,17 +178,39 @@ class LLMInterface:
                 logger.debug(
                     "Return call with uncompleted tool calls, since not all tools should be auto executed"
                 )
-                return completion, new_messages
+                is_hit_max_depth = False
+                break
             for tool, tool_call in zip(matched_tools, completion.tool_calls):
                 result = tool(**tool_call.arguments)
                 tool_message = LlmToolMessage(
                     content=str(result), tool_call_id=tool_call.id, raw_content=result
                 )
                 new_messages.append(tool_message)
-        logger.error("Max depth reached")
-        if error_on_max_depth:
-            raise LlmException("Max depth reached")
-        return completion, new_messages
+        if is_hit_max_depth:
+            logger.error("Max depth reached")
+            if error_on_max_depth:
+                raise LlmException("Max depth reached")
+        completion_messages: list[LlmCompletionMessage] = [
+            m for m in new_messages if isinstance(m, LlmCompletionMessage)
+        ]
+        if len(completion_messages) == 0:
+            raise LlmException("No completion messages returned")
+        end_time = time.time()
+        duration = end_time - start_time
+
+        metadata = LlmCompletionMetadata(
+            input_tokens=sum(i.metadata.input_tokens for i in completion_messages)
+            if all(i.metadata.input_tokens is not None for i in completion_messages)
+            else None,
+            output_tokens=sum(i.metadata.output_tokens for i in completion_messages)
+            if all(i.metadata.output_tokens is not None for i in completion_messages)
+            else None,
+            duration_seconds=duration,
+            llm_model_name=completion_messages[-1].metadata.llm_model_name,
+            llm_family=completion_messages[-1].metadata.llm_family,
+        )
+        result = LlmMultiMessageCompletion(messages=new_messages, metadata=metadata)
+        return result
 
     @staticmethod
     def safe_nested_get(data, keys):
