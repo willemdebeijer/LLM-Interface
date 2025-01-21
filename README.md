@@ -20,6 +20,7 @@ To add:
 
 Simplest example:
 ```python
+# Example 1
 from llm_interface import LLMInterface
 
 llm_interface = LLMInterface(openai_api_key="YOUR_OPENAI_API_KEY")
@@ -33,6 +34,24 @@ simple_result = await llm_interface.get_completion(
 simple_result.content
 #> The capital of the Netherlands is Amsterdam.
 ```
+
+Besides the result, we can also obtain metadata about the completion:
+```python
+# Example 1 cont.
+
+simple_result.metadata.duration_seconds
+#> 0.8740940093994141
+
+simple_result.metadata.input_tokens
+#> 15
+
+simple_result.metadata.output_tokens
+#> 9
+
+simple_result.metadata.cost_usd
+#> 0.0001275
+```
+Note that the cost estimation relies on the cost per 1m input and output tokens in `llm.py`. Please make sure to verify those and only use them as estimates.
 
 ### Tool calls
 
@@ -56,6 +75,32 @@ tool_call_result.content
 #> The current temperature in Amsterdam is 25 degrees Celsius.
 ```
 
+In the example above, the LLM will first return a tool call asking for the execution of the `get_weather` function with the argument `"Amsterdam"`. Then the LLM will execute the tool call and prompt the LLM for a second time with the newly added tool call result. The flow is as follows:
+```mermaid
+sequenceDiagram
+    participant Example
+    participant LLMInterface as LLMInterface
+    participant OpenAI as OpenAI
+
+    Example->>LLMInterface: get_auto_tool_completion
+    LLMInterface->>OpenAI: get llm completion
+    OpenAI->>LLMInterface: tool call: `get_weather("Amsterdam")`
+
+    LLMInterface->>LLMInterface: Execute tool call
+
+    LLMInterface->>OpenAI: get llm completion with tool result appended
+    OpenAI->>LLMInterface: result: "The current temperature in Amsterdam is 25 degrees Celsius."
+
+    LLMInterface->>Example: result
+```
+To prevent infinite recursion the `max_depth` parameter can be used to limit the amount of LLM calls. 
+
+Only tools in `auto_execute_tools` are executed automatically. Tools in `non_auto_execute_tools` are not executed automatically and will cause the method to return the result up to that point. This allows you to manually execute the tools as needed.
+
 ## Using
 
 Run tests by running `pytest` in the root of the project.
+
+## Links
+
+[My personal website](https://www.willemdebeijer.com)
