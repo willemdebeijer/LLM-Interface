@@ -92,3 +92,7 @@ class LlmMultiMessageCompletion(BaseModel):
         if not self.messages:
             return None
         return self.messages[-1].content
+
+    @computed_field
+    def llm_call_count(self) -> int:
+        return len([m for m in self.messages if isinstance(m, LlmCompletionMessage)])
