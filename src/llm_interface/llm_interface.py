@@ -111,7 +111,11 @@ class LLMInterface:
         end_time = time.time()
         duration = end_time - start_time
         llm_model_name = self.safe_nested_get(result, ("model",))
-        llm_family = LlmFamily.get_family_for_model_name(llm_model_name)
+        llm_family = (
+            LlmFamily.get_family_for_model_name(llm_model_name)
+            if llm_model_name
+            else None
+        )
         metadata = LlmCompletionMetadata(
             input_tokens=self.safe_nested_get(result, ("usage", "prompt_tokens")),
             output_tokens=self.safe_nested_get(result, ("usage", "completion_tokens")),

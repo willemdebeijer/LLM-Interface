@@ -18,7 +18,7 @@ To add:
 
 ## Examples
 
-Simplest example:
+### 1. Simplest example
 ```python
 # Example 1
 from llm_interface import LLMInterface
@@ -53,7 +53,7 @@ simple_result.metadata.cost_usd
 ```
 Note that the cost estimation relies on the cost per 1m input and output tokens in `llm.py`. Please make sure to verify those and only use them as estimates.
 
-### Tool calls
+### 2. Tool calls
 
 LLMInterface allows you to provide functions as tools to the LLM. It also takes care of the conversion of the function signature to JSON and the execution of the tool.
 ```python
@@ -155,6 +155,10 @@ json.dumps(
 #>   }
 #> ]
 ```
+
+### 3. Agent
+
+TODO
 
 ## Using
 
