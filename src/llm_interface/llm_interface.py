@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import time
 from enum import Enum
 from typing import (
     Any,
@@ -15,9 +16,10 @@ from typing import (
 
 import aiohttp
 
-from .exception import LlmException, RateLimitException
-from .model import (
+from llm_interface.exception import LlmException, RateLimitException
+from llm_interface.model import (
     LlmCompletionMessage,
+    LlmCompletionMetadata,
     LlmMessage,
     LlmSystemMessage,
     LlmToolCall,
@@ -27,6 +29,10 @@ from .model import (
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 class LLMInterface:
     """An interface for working with LLMs."""
@@ -35,6 +41,8 @@ class LLMInterface:
         self.oai_api_key = openai_api_key
         self.base_url = "https://api.openai.com/v1/"
         self.verbose = verbose
+        if verbose:
+            logger.setLevel(logging.DEBUG)
 
     async def get_completion(
         self,
@@ -43,10 +51,8 @@ class LLMInterface:
         temperature: float = 0.7,
         tools: list[Callable] | None = None,
     ) -> LlmCompletionMessage:
-        if self.verbose:
-            logger.debug("-" * 64)
-            logger.debug(f"Input messages:\n{messages}")
-        logger.debug(f"Calling OpenAI {model} with {len(messages)} messages")
+        start_time = time.time()
+
         headers = {"Authorization": f"Bearer {self.oai_api_key}"}
         url = f"{self.base_url}chat/completions"
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
@@ -65,6 +71,12 @@ class LLMInterface:
         if tools:
             serialized_tools = [self.function_to_tool(tool) for tool in tools]
             data["tools"] = serialized_tools
+
+        if self.verbose:
+            logger.debug("-" * 64)
+            logger.debug(f"Calling OpenAI {model} with {len(messages)} messages")
+            logger.debug(f"Input messages:\n{self._format_for_log(messages)}")
+
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 429:
@@ -75,8 +87,7 @@ class LLMInterface:
                         f"OpenAI API status code {response.status}, error: {error_text}"
                     )
                 result = await response.json()
-        if self.verbose:
-            logger.debug(f"OpenAI raw response:\n{result}")
+
         text = self.safe_nested_get(result, ("choices", 0, "message", "content"))
         raw_tool_calls = self.safe_nested_get(
             result, ("choices", 0, "message", "tool_calls")
@@ -91,12 +102,31 @@ class LLMInterface:
                 )
                 for raw_tool_call in raw_tool_calls
             ]
+
+        end_time = time.time()
+        duration = end_time - start_time
+        metadata = LlmCompletionMetadata(
+            input_tokens=self.safe_nested_get(result, ("usage", "prompt_tokens")),
+            output_tokens=self.safe_nested_get(result, ("usage", "completion_tokens")),
+            duration_seconds=duration,
+            model_name=self.safe_nested_get(result, ("model",)),
+        )
         logger.debug(
-            f"OpenAI response has {len(text or '')} characters and {len(tool_calls)} tool calls"
+            f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
         )
         if self.verbose:
             logger.debug("-" * 64)
-        return LlmCompletionMessage(content=text, tool_calls=tool_calls)
+        return LlmCompletionMessage(
+            content=text, tool_calls=tool_calls, metadata=metadata
+        )
+
+    def _format_for_log(self, obj: Any, prefix: str = "   ") -> str:
+        """Format an object for readable logging"""
+        if isinstance(obj, dict) or isinstance(obj, list):
+            return "\n".join(
+                prefix + line for line in json.dumps(obj, indent=2).splitlines()
+            )
+        return str(obj)
 
     def get_auto_tool_completion(
         self,
