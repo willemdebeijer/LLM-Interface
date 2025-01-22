@@ -283,6 +283,22 @@ repr(custom_product)
 
 ## Using
 
+### Installing
+
+This package is not on PyPI at this moment.
+
+To install in your Python environment run:
+```sh
+pip install git+https://github.com/willemdebeijer/LLM-Interface.git
+```
+
+Or add this line to your `requirements.txt`:
+```
+git+https://github.com/willemdebeijer/LLM-Interface.git
+```
+
+### Tests
+
 Run tests by running `pytest` in the root of the project.
 
 ## Links
