@@ -84,16 +84,19 @@ sequenceDiagram
     participant LLMInterface as LLMInterface
     participant OpenAI as OpenAI
 
-    Example->>LLMInterface: get_auto_tool_completion
-    LLMInterface->>OpenAI: get llm completion
-    OpenAI->>LLMInterface: tool call: `get_weather("Amsterdam")`
+    Example->>+LLMInterface: get_auto_tool_completion<br />"What is the weather in Amsterdam?"
+
+    Note over LLMInterface,OpenAI: Get LLM completion 1
+    LLMInterface->>+OpenAI: [🟢 User message]
+    OpenAI-->>-LLMInterface: [🔵 LLM message (tool call)]
 
     LLMInterface->>LLMInterface: Execute tool call
 
-    LLMInterface->>OpenAI: get llm completion with tool result appended
-    OpenAI->>LLMInterface: result: "The current temperature in Amsterdam is 25 degrees Celsius."
+    Note over LLMInterface,OpenAI: Get LLM completion 2
+    LLMInterface->>+OpenAI: [🟢 User message]<br />[🔵 LLM message (tool call)]<br />[🟣 Tool result]
+    OpenAI-->>-LLMInterface: [🔵 LLM message ("The current temperature <br />in Amsterdam is 25 degrees Celsius."]
 
-    LLMInterface->>Example: result
+    LLMInterface-->>-Example: "The current temperature <br />in Amsterdam is 25 degrees Celsius."
 ```
 To prevent infinite recursion the `max_depth` parameter can be used to limit the amount of LLM calls. 
 
