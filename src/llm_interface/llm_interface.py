@@ -187,7 +187,7 @@ class LLMInterface:
             for tool, tool_call in zip(matched_tools, completion.tool_calls):
                 result = tool(**tool_call.arguments)
                 tool_message = LlmToolMessage(
-                    content=str(result), tool_call_id=tool_call.id, raw_content=result
+                    content=repr(result), tool_call_id=tool_call.id, raw_content=result
                 )
                 new_messages.append(tool_message)
         if is_hit_max_depth:

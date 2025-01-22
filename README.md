@@ -58,6 +58,9 @@ Note that the cost estimation relies on the cost per 1m input and output tokens 
 LLMInterface allows you to provide functions as tools to the LLM. It also takes care of the conversion of the function signature to JSON and the execution of the tool.
 ```python
 # Example 2
+from llm_interface import LLMInterface
+
+llm_interface = LLMInterface(openai_api_key="YOUR_OPENAI_API_KEY"
 
 def get_weather(city: str) -> str:
     """Get the current temperature for a given location
@@ -161,7 +164,122 @@ json.dumps(
 
 ### 3. Agent
 
-TODO
+The term "agent" is used a lot but it generally refers to a program that consists of multiple LLM calls and in many cases can take actions. An agent generally has one or more tools that can be separated into three categories: inputs, processing and outputs.
+
+Input tool examples:
+- Search the web
+- Read from private knowledge base
+- Read from database or API
+
+Processing tool examples:
+- Execute code in sandbox
+
+Output tool examples:
+- Call endpoint to perform an action
+- Update internal knowledge base
+
+A simple agent can look like this:
+```python
+# Example 3
+
+class Agent:
+    def __init__(self, llm_interface: LLMInterface):
+        self.llm_interface = llm_interface
+
+    def forward(self, question: str) -> str:
+        result = await self.llm_interface.get_auto_tool_completion(
+            messages=[
+                {"role": "system", "content": "Be helpful and concise."}
+                {"role": "user", "content": question},
+            ],
+            model="gpt-4o-mini",
+            auto_execute_tools = [self.search_web, self.run_code],
+        )
+        return result.content
+
+    def search_web(self, query: str) -> str:
+        """Search the web for a given query
+        
+        :param query: The query to search for
+        """
+        ...
+
+    def run_code(self, code: str) -> str:
+        """Execute code in sandbox
+        
+        :param code: The code to execute
+        """
+        ...
+    
+```
+
+Many frameworks focus on getting the correct context such as user data in the prompt, but this can be trivially added to the system prompt by providing an additional parameter in `forward`.
+
+### 4. Tools returning complex objects
+
+The LLM requires the tool call result to be a string. Methods that return anything else will have their return value converted to a string using `repr()` before being added to the chat. The original return value of the function will be stored in the `raw_content` field of the tool call result.
+
+Since Pydantic objects have a readable representation by default, they're excellent candidates for complex tool return values.
+
+```python
+# Example 4
+from llm_interface import LLMInterface
+from pydantic import BaseModel
+
+llm_interface = LLMInterface(openai_api_key="YOUR_OPENAI_API_KEY"
+
+class Product(BaseModel):
+    _id: str
+    name: str
+    description: str
+    price: float
+
+def lookup_product(id: str) -> str:
+    """Get the details of a a product such as name, description and price
+    
+    :param id: ID of the product
+    """
+    # In a real application we might query the database or an API here
+    return Product(_id="123", name="Pineapple", description="A controversial pizza topping...", price=3.99)
+
+complex_tool_call_result = await llm_interface.get_auto_tool_completion(
+    messages=[
+        {"role": "user", "content": "What is the price of product 123?"},
+    ],
+    model="gpt-4o-mini",
+    auto_execute_tools = [lookup_product],
+)
+complex_tool_call_result.content
+#> 'The price of the product "Pineapple" is $3.99.'
+```
+
+By inspecting the messages we can see the object as it was returned to the LLM or get the actual object.
+```python
+# Example 4 cont.
+
+from llm_interface.model import LlmToolMessage
+tool_message = next(m for m in complex_tool_call_result.messages if isinstance(m, LlmToolMessage))
+
+# String object as it was returned to the LLM
+tool_message.content
+#> "Product(name='Pineapple', description='A controversial pizza topping...', price=3.99)"
+
+# Actual Python Product object
+tool_message.raw_content
+#> Product(name='Pineapple', description='A controversial pizza topping...', price=3.99)
+```
+
+Note that a custom Python class that does not inherit Pydantic BaseModel will need a custom `__repr__(self)` method to be usable by the LLM.
+```python
+class CustomProduct:
+    def __init__(self, name: str):
+        self.name = name
+
+custom_product = CustomProduct("Pineapple")
+# This is not usable by the LLM
+repr(custom_product)
+#> '<__main__.CustomProduct object at 0x10ca25790>'
+```
 
 ## Using
 
