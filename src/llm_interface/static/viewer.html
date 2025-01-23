@@ -65,7 +65,7 @@
                         <span class="message-metadata">
                             <div class="metadata-top">
                                 ${message.metadata.duration_seconds.toFixed(3)}s
-                                &bull; $${message.metadata.cost_usd.toFixed(6)}
+                                &bull; $${message.metadata.cost_usd.toFixed(6).slice(0,4)}<span class="cost-sub-cent-decimals">${message.metadata.cost_usd.toFixed(6).slice(4)}</span>
                             </div>
                             <div class="metadata-bottom">
                                 ${message.metadata.input_tokens} / ${message.metadata.output_tokens} tokens

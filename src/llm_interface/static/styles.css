@@ -4,6 +4,7 @@
     --card-bg: #ffffff;
     --border-color: #e2e8f0;
     --text-primary: #1e293b;
+    --text-metadata: #445268;
     --text-secondary: #64748b;
     --header-bg: #f1f5f9;
 }
@@ -231,7 +232,7 @@ h1 {
 }
 
 .message-metadata {
-    color: #666;
+    color: var(--text-metadata);
     font-size: 0.9em;
     display: flex;
     flex-direction: column;
@@ -241,4 +242,8 @@ h1 {
 
 .metadata-top, .metadata-bottom {
     line-height: 1.2;
+}
+
+.cost-sub-cent-decimals {
+    opacity: 0.75;
 }
