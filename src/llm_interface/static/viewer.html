@@ -56,8 +56,23 @@
 
             header.innerHTML = `
                 ${chevron.outerHTML}
-                ${roleIcon.outerHTML}
-                <span>${message.role[0].toUpperCase() + message.role.slice(1)}</span>
+                <div class="message-header-content">
+                    <div class="role-info">
+                        ${roleIcon.outerHTML}
+                        <span class="role-name">${message.role[0].toUpperCase() + message.role.slice(1)}</span>
+                    </div>
+                    ${message.role === 'assistant' && message.metadata ? `
+                        <span class="message-metadata">
+                            <div class="metadata-top">
+                                ${message.metadata.duration_seconds.toFixed(3)}s
+                                &bull; $${message.metadata.cost_usd.toFixed(6)}
+                            </div>
+                            <div class="metadata-bottom">
+                                ${message.metadata.input_tokens} / ${message.metadata.output_tokens} tokens
+                            </div>
+                        </span>
+                    ` : ''}
+                </div>
             `;
             
             const content = document.createElement('div');

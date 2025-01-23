@@ -216,3 +216,29 @@ h1 {
     font-weight: 600;
     color: var(--primary-color);
 }
+
+.message-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.role-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.message-metadata {
+    color: #666;
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.metadata-top, .metadata-bottom {
+    line-height: 1.2;
+}
