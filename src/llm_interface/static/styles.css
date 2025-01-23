@@ -1,3 +1,5 @@
+/* Shared */
+
 :root {
     --primary-color: #2563eb;
     --bg-color: #f8fafc;
@@ -26,6 +28,85 @@ h1 {
     color: var(--text-primary);
     margin-bottom: 24px;
 }
+
+/* General */
+
+.refresh-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+    background: #1d4ed8;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.split-view {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 100px);
+}
+
+/* Menu */
+
+#menu-bar {
+    width: 300px;
+    overflow-y: auto;
+    border-right: 1px solid #ddd;
+    padding-right: 20px;
+}
+
+#chat-details {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.menu-item {
+    padding: 10px;
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.menu-item.selected {
+    background-color: #e0e0e0;
+    border-color: #999;
+}
+
+.menu-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-family: monospace;
+}
+
+.menu-item-content .chat-id {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Other */
+
 
 .call-card {
     background: var(--card-bg);
@@ -143,79 +224,6 @@ h1 {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border-color);
-}
-
-.refresh-button {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 12px 24px;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: background-color 0.2s;
-}
-
-.refresh-button:hover {
-    background: #1d4ed8;
-}
-
-/* Loading state */
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-secondary);
-}
-
-.split-view {
-    display: flex;
-    gap: 20px;
-    height: calc(100vh - 100px);
-}
-
-#menu-bar {
-    width: 300px;
-    overflow-y: auto;
-    border-right: 1px solid #ddd;
-    padding-right: 20px;
-}
-
-#chat-details {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.menu-item {
-    padding: 10px;
-    border: 1px solid #ddd;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.menu-item:hover {
-    background-color: #f5f5f5;
-}
-
-.menu-item.selected {
-    background-color: #e0e0e0;
-    border-color: #999;
-}
-
-.menu-item-content {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-family: monospace;
-}
-
-.menu-item-content .chat-id {
-    font-weight: 600;
-    color: var(--primary-color);
 }
 
 .message-header-content {
