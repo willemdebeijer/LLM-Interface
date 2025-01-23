@@ -6,8 +6,11 @@
 </head>
 <body>
     <div class="container">
-        <h1>LLM Call Viewer ABC</h1>
-        <div id="calls"></div>
+        <h1>LLM Call Viewer</h1>
+        <div class="split-view">
+            <div id="menu-bar"></div>
+            <div id="chat-details"></div>
+        </div>
     </div>
     <button class="refresh-button" onclick="loadCalls()">Refresh</button>
 
@@ -80,7 +83,20 @@
             return msgDiv;
         }
 
-        function createCallElement(call) {
+        function createCallElement(call, isMenuItem = false) {
+            if (isMenuItem) {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.innerHTML = `
+                    <div class="menu-item-content">
+                        <span class="model-name">${call.model}</span>
+                        <span>${formatDate(call.timestamp)}</span>
+                    </div>
+                `;
+                menuItem.onclick = () => showCallDetails(call);
+                return menuItem;
+            }
+
             const callDiv = document.createElement('div');
             callDiv.className = 'call-card';
             
@@ -95,7 +111,6 @@
             header.innerHTML = `
                 <div class="call-header-content">
                     <div>
-                        <span class="chevron">›</span>
                         <span class="model-name">${call.model}</span>
                         • <span>${formatDate(call.timestamp)}</span>
                     </div>
@@ -107,36 +122,62 @@
 
             const content = document.createElement('div');
             content.className = 'messages-container';
+            content.style.display = 'block'; // Always show messages
             
             call.messages.forEach((msg, idx) => {
-                content.appendChild(createMessageElement(msg, idx));
+                const msgElement = createMessageElement(msg, idx);
+                msgElement.querySelector('.message-content').style.display = 'block'; // Always show message content
+                content.appendChild(msgElement);
             });
-            
-            header.onclick = () => toggleElement(content);
             
             callDiv.appendChild(header);
             callDiv.appendChild(content);
             return callDiv;
         }
 
+        function showCallDetails(call) {
+            const chatDetails = document.getElementById('chat-details');
+            chatDetails.innerHTML = '';
+            chatDetails.appendChild(createCallElement(call));
+            
+            // Update selected state in menu
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            const menuItems = document.querySelectorAll('.menu-item');
+            const index = calls.findIndex(c => c.timestamp === call.timestamp);
+            if (index >= 0) {
+                menuItems[index].classList.add('selected');
+            }
+        }
+
+        let calls = []; // Store calls globally
+
         async function loadCalls() {
-            const callsContainer = document.getElementById('calls');
-            callsContainer.innerHTML = '<div class="loading">Loading calls...</div>';
+            const menuBar = document.getElementById('menu-bar');
+            const chatDetails = document.getElementById('chat-details');
+            menuBar.innerHTML = '<div class="loading">Loading calls...</div>';
+            chatDetails.innerHTML = '';
             
             try {
                 const response = await fetch('/api/calls');
-                const calls = await response.json();
+                calls = await response.json();
                 
                 // Sort by timestamp, newest first
                 calls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
-                callsContainer.innerHTML = '';
+                menuBar.innerHTML = '';
                 calls.forEach(call => {
-                    callsContainer.appendChild(createCallElement(call));
+                    menuBar.appendChild(createCallElement(call, true));
                 });
+
+                // Show first call by default
+                if (calls.length > 0) {
+                    showCallDetails(calls[0]);
+                }
             } catch (error) {
                 console.error('Error loading calls:', error);
-                callsContainer.innerHTML = '<div class="loading">Error loading calls. Please try again.</div>';
+                menuBar.innerHTML = '<div class="loading">Error loading calls. Please try again.</div>';
             }
         }
 

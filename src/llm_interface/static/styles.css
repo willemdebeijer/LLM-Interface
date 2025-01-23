@@ -164,3 +164,44 @@ h1 {
     padding: 40px;
     color: var(--text-secondary);
 }
+
+.split-view {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 100px);
+}
+
+#menu-bar {
+    width: 300px;
+    overflow-y: auto;
+    border-right: 1px solid #ddd;
+    padding-right: 20px;
+}
+
+#chat-details {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.menu-item {
+    padding: 10px;
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.menu-item.selected {
+    background-color: #e0e0e0;
+    border-color: #999;
+}
+
+.menu-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
