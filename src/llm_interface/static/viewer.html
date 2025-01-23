@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LLM Call Viewer</title>
+    <title>LLM Chat Viewer</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>LLM Call Viewer</h1>
+        <h1>LLM Chat Viewer</h1>
         <div class="split-view">
             <div id="menu-bar"></div>
             <div id="chat-details"></div>
         </div>
     </div>
-    <button class="refresh-button" onclick="loadCalls()">Refresh</button>
+    <button class="refresh-button" onclick="loadChats()">Refresh</button>
 
     <script>
         function formatDate(dateStr) {
@@ -119,14 +119,14 @@
             return msgDiv;
         }
 
-        function createCallElement(call, isMenuItem = false) {
+        function createChatElement(chat, isMenuItem = false) {
             if (isMenuItem) {
                 const menuItem = document.createElement('div');
                 menuItem.className = 'menu-item';
                 menuItem.innerHTML = `
                     <div class="menu-item-content">
-                        <span class="chat-id">${call.id.substring(0, 8)}</span>
-                        <span class="timestamp">${new Date(call.timestamp).toLocaleString('en-CA', {
+                        <span class="chat-id">${chat.id.substring(0, 8)}</span>
+                        <span class="timestamp">${new Date(chat.timestamp).toLocaleString('en-CA', {
                             year: 'numeric',
                             month: '2-digit',
                             day: '2-digit',
@@ -136,31 +136,31 @@
                             hour12: false,
                             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                         }).replace(',', '')}</span>
-                        <span class="model-name">${call.model}</span>
+                        <span class="model-name">${chat.model}</span>
                     </div>
                 `;
-                menuItem.onclick = () => showCallDetails(call);
+                menuItem.onclick = () => showChatDetails(chat);
                 return menuItem;
             }
 
-            const callDiv = document.createElement('div');
-            callDiv.className = 'call-card';
+            const chatDiv = document.createElement('div');
+            chatDiv.className = 'chat-card';
             
             const header = document.createElement('div');
-            header.className = 'call-header';
+            header.className = 'chat-header';
             
             // Calculate total tokens and cost
-            const metadata = call.messages.find(m => m.role === 'assistant')?.metadata;
+            const metadata = chat.messages.find(m => m.role === 'assistant')?.metadata;
             const totalTokens = metadata ? metadata.input_tokens + metadata.output_tokens : 'N/A';
             const totalCost = metadata ? formatCost(metadata.cost_usd) : 'N/A';
             
             header.innerHTML = `
-                <div class="call-header-content">
+                <div class="chat-header-content">
                     <div>
-                        <span class="model-name">${call.model}</span>
-                        • <span>${formatDate(call.timestamp)}</span>
+                        <span class="model-name">${chat.model}</span>
+                        • <span>${formatDate(chat.timestamp)}</span>
                     </div>
-                    <span class="call-stats">
+                    <span class="chat-stats">
                         ${totalTokens} tokens • ${totalCost}
                     </span>
                 </div>
@@ -170,65 +170,65 @@
             content.className = 'messages-container';
             content.style.display = 'block'; // Always show messages
             
-            call.messages.forEach((msg, idx) => {
+            chat.messages.forEach((msg, idx) => {
                 const msgElement = createMessageElement(msg, idx);
                 msgElement.querySelector('.message-content').style.display = 'block'; // Always show message content
                 content.appendChild(msgElement);
             });
             
-            callDiv.appendChild(header);
-            callDiv.appendChild(content);
-            return callDiv;
+            chatDiv.appendChild(header);
+            chatDiv.appendChild(content);
+            return chatDiv;
         }
 
-        function showCallDetails(call) {
+        function showChatDetails(chat) {
             const chatDetails = document.getElementById('chat-details');
             chatDetails.innerHTML = '';
-            chatDetails.appendChild(createCallElement(call));
+            chatDetails.appendChild(createChatElement(chat));
             
             // Update selected state in menu
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('selected');
             });
             const menuItems = document.querySelectorAll('.menu-item');
-            const index = calls.findIndex(c => c.timestamp === call.timestamp);
+            const index = chats.findIndex(c => c.timestamp === chat.timestamp);
             if (index >= 0) {
                 menuItems[index].classList.add('selected');
             }
         }
 
-        let calls = []; // Store calls globally
+        let chats = []; // Store chats globally
 
-        async function loadCalls() {
+        async function loadChats() {
             const menuBar = document.getElementById('menu-bar');
             const chatDetails = document.getElementById('chat-details');
-            menuBar.innerHTML = '<div class="loading">Loading calls...</div>';
+            menuBar.innerHTML = '<div class="loading">Loading chats...</div>';
             chatDetails.innerHTML = '';
             
             try {
-                const response = await fetch('/api/calls');
-                calls = await response.json();
+                const response = await fetch('/api/chats');
+                chats = await response.json();
                 
                 // Sort by timestamp, newest first
-                calls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                chats.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 menuBar.innerHTML = '';
-                calls.forEach(call => {
-                    menuBar.appendChild(createCallElement(call, true));
+                chats.forEach(chat => {
+                    menuBar.appendChild(createChatElement(chat, true));
                 });
 
-                // Show first call by default
-                if (calls.length > 0) {
-                    showCallDetails(calls[0]);
+                // Show first chat by default
+                if (chats.length > 0) {
+                    showChatDetails(chats[0]);
                 }
             } catch (error) {
-                console.error('Error loading calls:', error);
-                menuBar.innerHTML = '<div class="loading">Error loading calls. Please try again.</div>';
+                console.error('Error loading chats:', error);
+                menuBar.innerHTML = '<div class="loading">Error loading chats. Please try again.</div>';
             }
         }
 
         // Initial load
-        loadCalls();
+        loadChats();
     </script>
 </body>
 </html>

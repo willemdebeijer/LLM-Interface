@@ -47,7 +47,7 @@ class LLMViewerHandler(SimpleHTTPRequestHandler):
             self.serve_file(file_path, content_type=content_type)
             return
 
-        if path == "/api/calls":
+        if path == "/api/chats":
             # Serve the JSON data from the debug directory
             self.serve_calls()
             return

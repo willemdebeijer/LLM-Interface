@@ -108,7 +108,7 @@ h1 {
 /* Other */
 
 
-.call-card {
+.chat-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -117,24 +117,24 @@ h1 {
     overflow: hidden;
 }
 
-.call-header {
+.chat-header {
     padding: 16px;
     background: var(--header-bg);
     cursor: pointer;
     user-select: none;
 }
 
-.call-header:hover {
+.chat-header:hover {
     background: #e8edf5;
 }
 
-.call-header-content {
+.chat-header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.call-stats {
+.chat-stats {
     color: var(--text-secondary);
     font-size: 0.9em;
 }
