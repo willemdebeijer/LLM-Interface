@@ -89,8 +89,18 @@
                 menuItem.className = 'menu-item';
                 menuItem.innerHTML = `
                     <div class="menu-item-content">
+                        <span class="chat-id">${call.id.substring(0, 8)}</span>
+                        <span class="timestamp">${new Date(call.timestamp).toLocaleString('en-CA', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false,
+                            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                        }).replace(',', '')}</span>
                         <span class="model-name">${call.model}</span>
-                        <span>${formatDate(call.timestamp)}</span>
                     </div>
                 `;
                 menuItem.onclick = () => showCallDetails(call);
