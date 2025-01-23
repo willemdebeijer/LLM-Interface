@@ -44,7 +44,7 @@
             msgDiv.className = `message role-${message.role}`;
             
             const header = document.createElement('div');
-            header.className = 'message-header';
+            header.className = 'message-header expanded';
             
             const roleIcon = document.createElement('div');
             roleIcon.className = 'role-icon';
@@ -52,7 +52,7 @@
 
             const chevron = document.createElement('span');
             chevron.className = 'chevron';
-            chevron.textContent = '›';
+            chevron.innerHTML = '&#x25BE;'; // Unicode down-pointing triangle
 
             header.innerHTML = `
                 ${chevron.outerHTML}

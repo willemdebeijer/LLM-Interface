@@ -118,12 +118,18 @@ h1 {
 
 .chevron {
     display: inline-block;
-    transition: transform 0.2s;
+    transition: transform 0.2s ease;
     margin-right: 8px;
+    font-size: 24px;
+    transform: rotate(0deg);  /* Start pointing down */
 }
 
-.expanded .chevron {
-    transform: rotate(90deg);
+.message-header:not(.expanded) .chevron {
+    transform: rotate(-90deg);
+}
+
+.message-header.expanded .chevron {
+    transform: rotate(0deg);
 }
 
 .metadata {
