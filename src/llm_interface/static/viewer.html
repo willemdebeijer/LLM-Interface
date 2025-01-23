@@ -79,18 +79,6 @@
             content.className = 'message-content';
             content.textContent = message.content;
 
-            // Add metadata for assistant messages
-            if (message.role === 'assistant' && message.metadata) {
-                const metadata = document.createElement('div');
-                metadata.className = 'metadata';
-                metadata.innerHTML = `
-                    Tokens: ${message.metadata.input_tokens} in / ${message.metadata.output_tokens} out
-                    • Cost: ${formatCost(message.metadata.cost_usd)}
-                    • Duration: ${formatDuration(message.metadata.duration_seconds)}
-                `;
-                content.appendChild(metadata);
-            }
-            
             header.onclick = () => toggleElement(content);
             
             msgDiv.appendChild(header);
