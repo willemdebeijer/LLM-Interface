@@ -129,9 +129,16 @@ h1 {
 }
 
 .chat-header-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 48px;
+}
+
+.chat-details-column {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9em;
 }
 
 .chat-stats {
@@ -287,4 +294,31 @@ h1 {
     font-family: monospace;
     font-size: 0.9em;
     white-space: pre-wrap;
+}
+
+.chat-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chat-details-list .spacer {
+    height: 12px;
+}
+
+.labeled-value {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    justify-content: start;
+    gap: 8px;
+}
+
+.labeled-value .value {
+    justify-self: end;
+    color: #333;
+}
+
+.labeled-value .label {
+    justify-self: start;
+    color: #666;
 }

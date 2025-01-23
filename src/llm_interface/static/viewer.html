@@ -72,6 +72,13 @@
                             </div>
                         </span>
                     ` : ''}
+                    ${message.role === 'tool' ? `
+                        <span class="message-metadata">
+                            <div class="metadata-bottom">
+                                ${message.tool_call_id}
+                            </div>
+                        </span>
+                    ` : ''}
                 </div>
             `;
             
@@ -152,17 +159,42 @@
             // Calculate total tokens and cost
             const metadata = chat.messages.find(m => m.role === 'assistant')?.metadata;
             const totalTokens = metadata ? metadata.input_tokens + metadata.output_tokens : 'N/A';
-            const totalCost = metadata ? formatCost(metadata.cost_usd) : 'N/A';
+            const totalCost = chat.messages.reduce((sum, m) => sum + (m.metadata?.cost_usd || 0), 0).toFixed(6);
             
             header.innerHTML = `
                 <div class="chat-header-content">
-                    <div>
-                        <span class="model-name">${chat.model}</span>
-                        • <span>${formatDate(chat.timestamp)}</span>
+                    <div class="chat-details-left chat-details-column">
+                        <div class="no-label">${chat.id}</div>
+                        <div class="no-label">${formatDate(chat.timestamp)}</div>
+                        <div class="no-label">${chat.model}</div>
                     </div>
-                    <span class="chat-stats">
-                        ${totalTokens} tokens • ${totalCost}
-                    </span>
+                    
+                    <div class="chat-details-right chat-details-column">
+                        <div class="labeled-value">
+                            <span class="value">${chat.messages.length}</span>
+                            <span class="label">messages</span>
+                        </div>
+                        <div class="labeled-value">
+                            <span class="value">${chat.messages.filter(m => m.role === 'assistant').length}</span>
+                            <span class="label">assistant messages</span>
+                        </div>
+                        <div class="labeled-value">
+                            <span class="value">${chat.messages.filter(m => m.role === 'tool').length}</span>
+                            <span class="label">tool messages</span>
+                        </div>
+                        <div class="labeled-value">
+                            <span class="value">${chat.messages.reduce((sum, m) => sum + (m.metadata?.input_tokens || 0), 0)}</span>
+                            <span class="label">input tokens</span>
+                        </div>
+                        <div class="labeled-value">
+                            <span class="value">${chat.messages.reduce((sum, m) => sum + (m.metadata?.output_tokens || 0), 0)}</span>
+                            <span class="label">output tokens</span>
+                        </div>
+                        <div class="labeled-value">
+                            <span class="value">$${totalCost.slice(0,4)}<span class="cost-sub-cent-decimals">${totalCost.slice(4)}</span></span>
+                            <span class="label">total cost</span>
+                        </div>
+                    </div>
                 </div>
             `;
 
