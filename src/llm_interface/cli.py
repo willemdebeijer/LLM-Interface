@@ -5,13 +5,13 @@ import threading
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 import pkg_resources
 
 
 class LLMViewerHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, debug_dir=None, **kwargs):
+    def __init__(self, *args, debug_dir: str, **kwargs):
         self.debug_dir = debug_dir
         super().__init__(*args, **kwargs)
 
@@ -23,16 +23,28 @@ class LLMViewerHandler(SimpleHTTPRequestHandler):
         if path == "/":
             # Redirect root to viewer.html
             self.send_response(302)
-            self.send_header("Location", "/viewer.html")
+            self.send_header("Location", "/static/viewer.html")
             self.end_headers()
             return
 
-        if path == "/viewer.html":
-            # Serve the viewer.html from the package's static directory
-            viewer_path = pkg_resources.resource_filename(
-                "llm_interface", "static/viewer.html"
+        if "static" in path:
+            # Get the filename from the path
+            filename = path.split("/")[-1]
+            # Get the file extension
+            ext = os.path.splitext(filename)[1]
+            # Map extensions to content types
+            content_types = {
+                ".html": "text/html",
+                ".css": "text/css",
+                ".js": "application/javascript",
+            }
+            content_type = content_types.get(ext, "text/plain")
+
+            # Get the file path from the package's static directory
+            file_path = pkg_resources.resource_filename(
+                "llm_interface", path.lstrip("/")
             )
-            self.serve_file(viewer_path, content_type="text/html")
+            self.serve_file(file_path, content_type=content_type)
             return
 
         if path == "/api/calls":
@@ -80,7 +92,7 @@ def create_handler(debug_dir):
 def main():
     # Get the current working directory
     cwd = os.getcwd()
-    debug_dir = os.path.join(cwd, ".llm_recorder")
+    debug_dir: str = os.path.join(cwd, ".llm_recorder")
 
     if not os.path.exists(debug_dir):
         print(f"No debug data found in {debug_dir}")
@@ -98,7 +110,7 @@ def main():
     thread.daemon = True
     thread.start()
 
-    url = f"http://localhost:{actual_port}/viewer.html"
+    url = f"http://localhost:{actual_port}/static/viewer.html"
     print(f"Opening LLM Interface at {url}")
     print("Press Ctrl+C to stop the server")
     webbrowser.open(url)

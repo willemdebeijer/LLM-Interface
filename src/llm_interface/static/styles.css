@@ -1,0 +1,166 @@
+:root {
+    --primary-color: #2563eb;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --header-bg: #f1f5f9;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: var(--bg-color);
+    color: var(--text-primary);
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+h1 {
+    color: var(--text-primary);
+    margin-bottom: 24px;
+}
+
+.call-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.call-header {
+    padding: 16px;
+    background: var(--header-bg);
+    cursor: pointer;
+    user-select: none;
+}
+
+.call-header:hover {
+    background: #e8edf5;
+}
+
+.call-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.model-name {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.call-stats {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.messages-container {
+    display: none;
+    padding: 16px;
+}
+
+.message {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.message-header {
+    padding: 12px 16px;
+    background: var(--header-bg);
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.message-header:hover {
+    background: #e8edf5;
+}
+
+.message-content {
+    display: none;
+    padding: 16px;
+    white-space: pre-wrap;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-family: monospace;
+    line-height: 1.5;
+}
+
+.role-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    color: white;
+}
+
+.role-user .role-icon {
+    background: #2563eb;
+}
+
+.role-assistant .role-icon {
+    background: #16a34a;
+}
+
+.role-system .role-icon {
+    background: #7c3aed;
+}
+
+.chevron {
+    display: inline-block;
+    transition: transform 0.2s;
+    margin-right: 8px;
+}
+
+.expanded .chevron {
+    transform: rotate(90deg);
+}
+
+.metadata {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.refresh-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+    background: #1d4ed8;
+}
+
+/* Loading state */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
