@@ -247,3 +247,36 @@ h1 {
 .cost-sub-cent-decimals {
     opacity: 0.75;
 }
+
+.tool-call {
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin: 8px 0;
+    padding: 8px;
+}
+
+.tool-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.tool-name {
+    font-weight: 500;
+}
+
+.tool-id {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.tool-arguments {
+    background: #fff;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 0;
+    font-family: monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}

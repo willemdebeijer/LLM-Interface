@@ -77,8 +77,41 @@
             
             const content = document.createElement('div');
             content.className = 'message-content';
-            content.textContent = message.content;
-
+            
+            // Add message content if it exists
+            if (message.content) {
+                content.textContent = message.content;
+            }
+            
+            // Add tool calls if they exist
+            if (message.tool_calls && message.tool_calls.length > 0) {
+                const toolCallsContainer = document.createElement('div');
+                toolCallsContainer.className = 'tool-calls-container';
+                
+                message.tool_calls.forEach(toolCall => {
+                    const toolCallDiv = document.createElement('div');
+                    toolCallDiv.className = 'tool-call';
+                    
+                    const toolHeader = document.createElement('div');
+                    toolHeader.className = 'tool-header';
+                    toolHeader.innerHTML = `
+                        <div class="role-icon">T</div>
+                        <span class="tool-name">\`${toolCall.name}\`</span>
+                        <span class="tool-id">${toolCall.id}</span>
+                    `;
+                    
+                    const toolArgs = document.createElement('pre');
+                    toolArgs.className = 'tool-arguments';
+                    toolArgs.textContent = JSON.stringify(toolCall.arguments, null, 2);
+                    
+                    toolCallDiv.appendChild(toolHeader);
+                    toolCallDiv.appendChild(toolArgs);
+                    toolCallsContainer.appendChild(toolCallDiv);
+                });
+                
+                content.appendChild(toolCallsContainer);
+            }
+            
             header.onclick = () => toggleElement(content);
             
             msgDiv.appendChild(header);
