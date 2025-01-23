@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LLM Call Viewer</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --header-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 24px;
+        }
+
+        .call-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .call-header {
+            padding: 16px;
+            background: var(--header-bg);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .call-header:hover {
+            background: #e8edf5;
+        }
+
+        .call-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .call-stats {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .messages-container {
+            display: none;
+            padding: 16px;
+        }
+
+        .message {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .message-header {
+            padding: 12px 16px;
+            background: var(--header-bg);
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message-header:hover {
+            background: #e8edf5;
+        }
+
+        .message-content {
+            display: none;
+            padding: 16px;
+            white-space: pre-wrap;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        .role-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+        }
+
+        .role-user .role-icon {
+            background: #2563eb;
+        }
+
+        .role-assistant .role-icon {
+            background: #16a34a;
+        }
+
+        .role-system .role-icon {
+            background: #7c3aed;
+        }
+
+        .chevron {
+            display: inline-block;
+            transition: transform 0.2s;
+            margin-right: 8px;
+        }
+
+        .expanded .chevron {
+            transform: rotate(90deg);
+        }
+
+        .metadata {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .refresh-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+
+        .refresh-button:hover {
+            background: #1d4ed8;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LLM Call Viewer</h1>
+        <div id="calls"></div>
+    </div>
+    <button class="refresh-button" onclick="loadCalls()">Refresh</button>
+
+    <script>
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString();
+        }
+
+        function formatCost(cost) {
+            return `$${cost.toFixed(6)}`;
+        }
+
+        function formatDuration(seconds) {
+            return `${seconds.toFixed(2)}s`;
+        }
+
+        function toggleElement(element) {
+            const isHidden = element.style.display === 'none' || !element.style.display;
+            element.style.display = isHidden ? 'block' : 'none';
+            
+            // Toggle expanded class on parent for chevron rotation
+            const header = element.previousElementSibling;
+            if (header) {
+                header.classList.toggle('expanded', isHidden);
+            }
+        }
+
+        function createMessageElement(message, index) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message role-${message.role}`;
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            
+            const roleIcon = document.createElement('div');
+            roleIcon.className = 'role-icon';
+            roleIcon.textContent = message.role[0].toUpperCase();
+
+            const chevron = document.createElement('span');
+            chevron.className = 'chevron';
+            chevron.textContent = '›';
+
+            header.innerHTML = `
+                ${chevron.outerHTML}
+                ${roleIcon.outerHTML}
+                <span>${message.role}</span>
+            `;
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.textContent = message.content;
+
+            // Add metadata for assistant messages
+            if (message.role === 'assistant' && message.metadata) {
+                const metadata = document.createElement('div');
+                metadata.className = 'metadata';
+                metadata.innerHTML = `
+                    Tokens: ${message.metadata.input_tokens} in / ${message.metadata.output_tokens} out
+                    • Cost: ${formatCost(message.metadata.cost_usd)}
+                    • Duration: ${formatDuration(message.metadata.duration_seconds)}
+                `;
+                content.appendChild(metadata);
+            }
+            
+            header.onclick = () => toggleElement(content);
+            
+            msgDiv.appendChild(header);
+            msgDiv.appendChild(content);
+            return msgDiv;
+        }
+
+        function createCallElement(call) {
+            const callDiv = document.createElement('div');
+            callDiv.className = 'call-card';
+            
+            const header = document.createElement('div');
+            header.className = 'call-header';
+            
+            // Calculate total tokens and cost
+            const metadata = call.messages.find(m => m.role === 'assistant')?.metadata;
+            const totalTokens = metadata ? metadata.input_tokens + metadata.output_tokens : 'N/A';
+            const totalCost = metadata ? formatCost(metadata.cost_usd) : 'N/A';
+            
+            header.innerHTML = `
+                <div class="call-header-content">
+                    <div>
+                        <span class="chevron">›</span>
+                        <span class="model-name">${call.model}</span>
+                        • <span>${formatDate(call.timestamp)}</span>
+                    </div>
+                    <span class="call-stats">
+                        ${totalTokens} tokens • ${totalCost}
+                    </span>
+                </div>
+            `;
+
+            const content = document.createElement('div');
+            content.className = 'messages-container';
+            
+            call.messages.forEach((msg, idx) => {
+                content.appendChild(createMessageElement(msg, idx));
+            });
+            
+            header.onclick = () => toggleElement(content);
+            
+            callDiv.appendChild(header);
+            callDiv.appendChild(content);
+            return callDiv;
+        }
+
+        async function loadCalls() {
+            const callsContainer = document.getElementById('calls');
+            callsContainer.innerHTML = '<div class="loading">Loading calls...</div>';
+            
+            try {
+                const response = await fetch('/api/calls');
+                const calls = await response.json();
+                
+                // Sort by timestamp, newest first
+                calls.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                callsContainer.innerHTML = '';
+                calls.forEach(call => {
+                    callsContainer.appendChild(createCallElement(call));
+                });
+            } catch (error) {
+                console.error('Error loading calls:', error);
+                callsContainer.innerHTML = '<div class="loading">Error loading calls. Please try again.</div>';
+            }
+        }
+
+        // Initial load
+        loadCalls();
+    </script>
+</body>
+</html>

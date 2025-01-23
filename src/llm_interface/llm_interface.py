@@ -29,6 +29,7 @@ from llm_interface.model import (
     LlmToolMessage,
     LlmUserMessage,
 )
+from llm_interface.recorder import DebugRecorder
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +41,16 @@ logging.basicConfig(
 class LLMInterface:
     """An interface for working with LLMs."""
 
-    def __init__(self, openai_api_key: str, verbose=True):
+    def __init__(self, openai_api_key: str, verbose=True, debug=False):
         self.oai_api_key = openai_api_key
         self.base_url = "https://api.openai.com/v1/"
         self.verbose = verbose
+        self.debug = (
+            debug  # Will record all LLM calls and make them available to the viewer
+        )
+        self.recorders = []
+        if debug:
+            self.recorders.append(DebugRecorder())
         if verbose:
             logger.setLevel(logging.DEBUG)
 
@@ -123,14 +130,17 @@ class LLMInterface:
             llm_model_name=llm_model_name,
             llm_family=llm_family,
         )
+        completion_message = LlmCompletionMessage(
+            content=text, tool_calls=tool_calls, metadata=metadata
+        )
+        for recorder in self.recorders:
+            recorder.record(model=model, messages=message_objs + [completion_message])
         logger.debug(
             f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
         )
         if self.verbose:
             logger.debug("-" * 64)
-        return LlmCompletionMessage(
-            content=text, tool_calls=tool_calls, metadata=metadata
-        )
+        return completion_message
 
     def _format_for_log(self, obj: Any, prefix: str = "   ") -> str:
         """Format an object for readable logging"""
