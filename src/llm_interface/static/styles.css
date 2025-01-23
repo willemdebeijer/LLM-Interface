@@ -104,16 +104,20 @@ h1 {
     color: white;
 }
 
-.role-user .role-icon {
+.role-assistant .role-icon {
     background: #2563eb;
 }
 
-.role-assistant .role-icon {
+.role-user .role-icon {
     background: #16a34a;
 }
 
-.role-system .role-icon {
+.role-tool .role-icon {
     background: #7c3aed;
+}
+
+.role-system .role-icon {
+    background: #ea580c;
 }
 
 .chevron {

@@ -57,7 +57,7 @@
             header.innerHTML = `
                 ${chevron.outerHTML}
                 ${roleIcon.outerHTML}
-                <span>${message.role}</span>
+                <span>${message.role[0].toUpperCase() + message.role.slice(1)}</span>
             `;
             
             const content = document.createElement('div');
