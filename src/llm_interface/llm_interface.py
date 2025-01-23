@@ -15,7 +15,6 @@ from typing import (
 )
 
 import aiohttp
-from pydantic import BaseModel
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.llm import LlmFamily
@@ -195,6 +194,8 @@ class LLMInterface:
                 is_hit_max_depth = False
                 break
             for tool, tool_call in zip(matched_tools, completion.tool_calls):
+                if not tool:
+                    raise LlmException("No matched tool")
                 result = tool(**tool_call.arguments)
                 tool_message = LlmToolMessage(
                     content=repr(result), tool_call_id=tool_call.id, raw_content=result
@@ -213,10 +214,12 @@ class LLMInterface:
         duration = end_time - start_time
 
         metadata = LlmCompletionMetadata(
-            input_tokens=sum(i.metadata.input_tokens for i in completion_messages)
+            input_tokens=sum(i.metadata.input_tokens or 0 for i in completion_messages)
             if all(i.metadata.input_tokens is not None for i in completion_messages)
             else None,
-            output_tokens=sum(i.metadata.output_tokens for i in completion_messages)
+            output_tokens=sum(
+                i.metadata.output_tokens or 0 for i in completion_messages
+            )
             if all(i.metadata.output_tokens is not None for i in completion_messages)
             else None,
             duration_seconds=duration,
@@ -263,7 +266,7 @@ class LLMInterface:
         if isinstance(message_obj, dict):
             return message_obj
         if isinstance(message_obj, LlmCompletionMessage):
-            d = {"role": message_obj.role}
+            d: dict[str, Any] = {"role": message_obj.role}
             if message_obj.content is not None:
                 d["content"] = message_obj.content
             if message_obj.tool_calls is not None:
