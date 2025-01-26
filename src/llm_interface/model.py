@@ -59,8 +59,8 @@ class LlmCompletionMetadata(BaseModel):
 
     @computed_field
     def cost_usd(self) -> float | None:
-        if (input_cost_usd := self.input_cost_usd) and (
-            output_cost_usd := self.output_cost_usd
+        if (input_cost_usd := self.input_cost_usd()) and (
+            output_cost_usd := self.output_cost_usd()
         ):
             return input_cost_usd + output_cost_usd
         return None
