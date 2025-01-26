@@ -1,7 +1,9 @@
+import asyncio
 import inspect
 import json
 import logging
 import time
+from collections.abc import Sequence
 from enum import Enum
 from typing import (
     Any,
@@ -9,6 +11,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Union,
     get_args,
     get_origin,
     get_type_hints,
@@ -55,7 +58,7 @@ class LLMInterface:
 
     async def get_completion(
         self,
-        messages: list[dict[str, Any] | LlmMessage],
+        messages: Sequence[Union[LlmMessage, dict[str, Any]]],
         model: str,
         temperature: float = 0.7,
         tools: list[Callable] | None = None,
@@ -148,13 +151,13 @@ class LLMInterface:
                 return "\n".join(
                     prefix + line for line in json.dumps(obj, indent=2).splitlines()
                 )
-        except Exception as e:
+        except Exception:
             pass
         return str(obj)
 
     async def get_auto_tool_completion(
         self,
-        messages: list[dict[str, Any] | LlmMessage],
+        messages: Sequence[Union[LlmMessage, dict[str, Any]]],
         model: str,
         temperature: float = 0.7,
         auto_execute_tools: list[Callable] = [],
@@ -170,7 +173,10 @@ class LLMInterface:
         is_hit_max_depth = True
         for i in range(max_depth):
             completion: LlmCompletionMessage = await self.get_completion(
-                messages=messages + new_messages,
+                messages=[
+                    *messages,
+                ]
+                + [*new_messages],
                 model=model,
                 temperature=temperature,
                 tools=auto_execute_tools + non_auto_execute_tools,
@@ -193,14 +199,30 @@ class LLMInterface:
                 )
                 is_hit_max_depth = False
                 break
+            async_tasks = []
             for tool, tool_call in zip(matched_tools, completion.tool_calls):
                 if not tool:
                     raise LlmException("No matched tool")
+                if inspect.iscoroutinefunction(tool):
+                    async_tasks.append((tool_call, tool(**tool_call.arguments)))
+                    continue
                 result = tool(**tool_call.arguments)
                 tool_message = LlmToolMessage(
                     content=repr(result), tool_call_id=tool_call.id, raw_content=result
                 )
                 new_messages.append(tool_message)
+            if async_tasks:
+                results = await asyncio.gather(*(task[1] for task in async_tasks))
+                new_messages.extend(
+                    [
+                        LlmToolMessage(
+                            content=repr(result),
+                            tool_call_id=task[0].id,
+                            raw_content=result,
+                        )
+                        for result, task in zip(results, async_tasks)
+                    ]
+                )
         if is_hit_max_depth:
             logger.error("Max depth reached")
             if error_on_max_depth:
