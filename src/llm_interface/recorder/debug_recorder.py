@@ -14,6 +14,7 @@ class DebugRecorder:
     def __init__(self, output_dir=DEFAULT_OUTPUT_DIR):
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
+        self._chat_id_to_filename_cache: dict[str, str] = {}
 
     def record(self, model: str, messages: list[LlmMessage], *args, **kwargs):
         """Record a LLM completion call."""
@@ -25,6 +26,13 @@ class DebugRecorder:
             "model": model,
             "messages": [msg.model_dump() for msg in messages],
         }
-        filename = f"{dt.strftime('%Y%m%d_%H%M%S')}_{call_id}.json"
+        # If stored chat with same chat id exists then overwrite it to prevent duplicates
+        chat_id = kwargs.get("chat_id", None)
+        if chat_id and chat_id in self._chat_id_to_filename_cache:
+            filename = self._chat_id_to_filename_cache[chat_id]
+        else:
+            filename = f"{dt.strftime('%Y%m%d_%H%M%S')}_{call_id}.json"
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(call_info, f, indent=2)
+        if chat_id:
+            self._chat_id_to_filename_cache[kwargs["chat_id"]] = filename

@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import time
+import uuid
 from collections.abc import Sequence
 from enum import Enum
 from typing import (
@@ -62,6 +63,7 @@ class LLMInterface:
         model: str,
         temperature: float = 0.7,
         tools: list[Callable] | None = None,
+        **kwargs,
     ) -> LlmCompletionMessage:
         start_time = time.time()
 
@@ -136,7 +138,9 @@ class LLMInterface:
             content=text, tool_calls=tool_calls, metadata=metadata
         )
         for recorder in self.recorders:
-            recorder.record(model=model, messages=message_objs + [completion_message])
+            recorder.record(
+                model=model, messages=message_objs + [completion_message], **kwargs
+            )
         logger.debug(
             f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
         )
@@ -167,6 +171,7 @@ class LLMInterface:
     ) -> LlmMultiMessageCompletion:
         """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message)."""
         start_time = time.time()
+        chat_id = str(uuid.uuid4())
         if max_depth < 1:
             raise ValueError("Max depth must be at least 1.")
         new_messages: list[LlmMessage] = []
@@ -180,6 +185,7 @@ class LLMInterface:
                 model=model,
                 temperature=temperature,
                 tools=auto_execute_tools + non_auto_execute_tools,
+                chat_id=chat_id,
             )
             new_messages.append(completion)
             if not completion.tool_calls:
