@@ -30,6 +30,7 @@ from llm_interface.model import (
     LlmSystemMessage,
     LlmToolCall,
     LlmToolMessage,
+    LlmToolMessageMetadata,
     LlmUserMessage,
 )
 from llm_interface.recorder import DebugRecorder
@@ -39,6 +40,14 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+
+async def time_coroutine(coroutine):
+    """Await coroutine and return its results and the duration in seconds"""
+    start = time.time()
+    result = await coroutine
+    end = time.time()
+    return result, end - start
 
 
 class LLMInterface:
@@ -212,19 +221,31 @@ class LLMInterface:
                 if inspect.iscoroutinefunction(tool):
                     async_tasks.append((tool_call, tool(**tool_call.arguments)))
                     continue
+                start = time.time()
                 result = tool(**tool_call.arguments)
+                wall_time_seconds = time.time() - start
                 tool_message = LlmToolMessage(
-                    content=repr(result), tool_call_id=tool_call.id, raw_content=result
+                    content=repr(result),
+                    tool_call_id=tool_call.id,
+                    raw_content=result,
+                    metadata=LlmToolMessageMetadata(
+                        wall_time_seconds=wall_time_seconds, is_async=False
+                    ),
                 )
                 new_messages.append(tool_message)
             if async_tasks:
-                results = await asyncio.gather(*(task[1] for task in async_tasks))
+                results = await asyncio.gather(
+                    *(time_coroutine(task[1]) for task in async_tasks)
+                )
                 new_messages.extend(
                     [
                         LlmToolMessage(
-                            content=repr(result),
+                            content=repr(result[0]),
                             tool_call_id=task[0].id,
-                            raw_content=result,
+                            raw_content=result[0],
+                            metadata=LlmToolMessageMetadata(
+                                wall_time_seconds=result[1], is_async=True
+                            ),
                         )
                         for result, task in zip(results, async_tasks)
                     ]

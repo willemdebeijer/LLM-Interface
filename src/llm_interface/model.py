@@ -1,6 +1,6 @@
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from llm_interface.llm import LlmFamily
 
@@ -15,6 +15,13 @@ class LlmUserMessage(BaseModel):
     content: str
 
 
+class LlmToolMessageMetadata(BaseModel):
+    wall_time_seconds: float | None = (
+        None  # Total time from starting tool to completing it. Might be impacted by multiple simultaneous async calls
+    )
+    is_async: bool | None = None
+
+
 class LlmToolMessage(BaseModel):
     role: Literal["tool"] = "tool"
     content: str
@@ -22,6 +29,7 @@ class LlmToolMessage(BaseModel):
     raw_content: (
         Any  # The raw value that is returned by the tool without converting to a string
     )
+    metadata: LlmToolMessageMetadata = Field(default_factory=LlmToolMessageMetadata)
 
 
 class LlmToolCall(BaseModel):
@@ -59,8 +67,8 @@ class LlmCompletionMetadata(BaseModel):
 
     @computed_field
     def cost_usd(self) -> float | None:
-        if (input_cost_usd := self.input_cost_usd()) and (
-            output_cost_usd := self.output_cost_usd()
+        if (input_cost_usd := self.input_cost_usd) and (
+            output_cost_usd := self.output_cost_usd
         ):
             return input_cost_usd + output_cost_usd
         return None
