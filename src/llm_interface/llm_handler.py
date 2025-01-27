@@ -22,7 +22,7 @@ class AbstractLlmHandler(ABC):
         """
 
 
-class OpenAILLMHandler(AbstractLlmHandler):
+class OpenAiLlmHandler(AbstractLlmHandler):
     def __init__(
         self,
         api_key: str,

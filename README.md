@@ -297,6 +297,35 @@ Or add this line to your `requirements.txt`:
 git+https://github.com/willemdebeijer/LLM-Interface.git
 ```
 
+### Adding LLMs
+
+This package is made to be as hackable as possible.
+
+To add a different API that uses the OpenAI format, e.g. Groq:
+```python
+from llm_interface import LLMInterface
+from llm_interface.llm_handler import OpenAiLlmHandler
+from llm_interface.llm import LlmProvider, LlmModel
+
+provider = LlmProvider(name="Groq")
+
+llm_interface = LLMInterface(handler=OpenAiLlmHandler(api_key="<your-api-key>", base_url="https://api.groq.com/openai/v1", provider=groq))
+
+# OPTIONAL:
+# Add cost estimations by adding a new model
+llm = LlmModel(
+    name="llama-3.3-70b-specdec",
+    provider=provider,
+    usd_per_1m_input_tokens=0.59,
+    usd_per_1m_output_tokens=0.99,    
+)
+
+# Now the model can be used like this:
+# result = await llm_interface.get_completion(messages=..., model="llama-3.3-70b-specdec")
+```
+
+To add a custom LLM that doesn't use the OpenAI spec, create a subclass of `AbstractLlmHandler`
+
 ### Tests
 
 Run tests by running `pytest` in the root of the project.

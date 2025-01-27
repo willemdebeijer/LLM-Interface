@@ -19,7 +19,7 @@ from typing import (
 )
 
 from llm_interface.exception import LlmException
-from llm_interface.llm_handler import AbstractLlmHandler, OpenAILLMHandler
+from llm_interface.llm_handler import AbstractLlmHandler, OpenAiLlmHandler
 from llm_interface.model import (
     LlmCompletionMessage,
     LlmCompletionMetadata,
@@ -64,7 +64,7 @@ class LLMInterface:
         if handler:
             self.handler = handler
         elif openai_api_key:
-            self.handler: AbstractLlmHandler = OpenAILLMHandler(openai_api_key)
+            self.handler: AbstractLlmHandler = OpenAiLlmHandler(openai_api_key)
         else:
             raise Exception("Please provide `openai_api_key` or `handler`")
         self.verbose = verbose
