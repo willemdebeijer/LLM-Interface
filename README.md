@@ -2,7 +2,7 @@
 
 LLMs are awesome but working with them can be tricky. There are a lot of complex frameworks and packages that hide the complexity but obfuscate certain features or make it hard to adapt to the quickly changing advancements in AI.
 
-This is a simple interface to handle the basics.
+This is a simple interface to handle the basics. It's very hackable and only depends on `pydantic` and `aiohttp`.
 
 Features:
 - Pretty logging for debugging
@@ -15,6 +15,14 @@ To add:
 - Retry
 - Simple parallel/batch calls
 - Other LLM providers
+
+## Chat Viewer
+
+Creating a `LLMInterface` with argument `debug=True` will every chat to a JSON file. These can be easily inspected in the browser by running `llm-interface` in the terminal.
+
+<img src="assets/llm-chat-viewer.png" alt="Alt text" />
+
+The viewer has a lot of useful metadata out of the box such as duration of calls, tokens used and even cost estimations.
 
 ## Examples
 
