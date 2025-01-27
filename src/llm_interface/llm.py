@@ -88,6 +88,9 @@ o1_mini = LlmModel(
 )
 
 # Groq models
-# groq_llama_3_3_70b_specdec_8k = LlmModel(
-#     name="llama-3.3-"
-# )
+groq_llama_3_3_70b_specdec_8k = LlmModel(
+    name="llama-3.3-70b-specdec",
+    provider=groq,
+    usd_per_1m_input_tokens=0.59,
+    usd_per_1m_output_tokens=0.99,
+)
