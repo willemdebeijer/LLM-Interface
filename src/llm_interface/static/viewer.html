@@ -74,6 +74,10 @@
                     ` : ''}
                     ${message.role === 'tool' ? `
                         <span class="message-metadata">
+                            <div class="metadata-top">
+                                ${message.metadata.wall_time_seconds.toFixed(3)}s wall time
+                                &bull; ${message.metadata.is_async ? 'asynchronous' : 'synchronous'}
+                            </div>
                             <div class="metadata-bottom">
                                 ${message.tool_call_id}
                             </div>
