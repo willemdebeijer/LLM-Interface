@@ -4,7 +4,8 @@ from typing import Any
 import pytest
 
 from llm_interface import LLMInterface
-from llm_interface.model import LlmToolMessage
+from llm_interface.llm import LlmFamily
+from llm_interface.model import LlmCompletionMessage, LlmToolMessage
 
 
 class MockResponse:
@@ -43,6 +44,47 @@ async def test_get_completion(monkeypatch):
     result = await llm.get_completion(messages=messages, model="gpt-4")
 
     assert result.content == "Hello, world!"
+    assert result.metadata.input_tokens is None
+    assert result.metadata.output_tokens is None
+
+
+@pytest.mark.asyncio
+async def test_get_completion_with_metadata(monkeypatch):
+    """Test the completion uses the metadata."""
+
+    # Create fake model provider
+    llm_family = LlmFamily(
+        name="gpt-4o", usd_per_1m_input_tokens=0.1, usd_per_1m_output_tokens=1.0
+    )
+
+    mock_response = {
+        "choices": [
+            {
+                "message": {
+                    "content": "Hello, world!",
+                }
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+        "model": "gpt-4o-v1",
+    }
+
+    mock = MockResponse(mock_response, 200)
+    monkeypatch.setattr("aiohttp.ClientSession.post", lambda *args, **kwargs: mock)
+
+    llm = LLMInterface(openai_api_key="test_key", verbose=False)
+    messages: list[dict[str, Any]] = [{"role": "user", "content": "Hello"}]
+    result = await llm.get_completion(messages=messages, model="gpt-4o")
+
+    assert result.content == "Hello, world!"
+    assert result.metadata.input_tokens == 10
+    assert result.metadata.output_tokens == 5
+    assert result.metadata.duration_seconds or 0 > 0
+    assert result.metadata.llm_model_name == "gpt-4o-v1"
+    assert result.metadata.llm_family == llm_family
+    assert result.metadata.input_cost_usd or 0 > 0
+    assert result.metadata.output_cost_usd or 0 > 0
+    assert result.metadata.cost_usd or 0 > 0
 
 
 mock_weather_responses = [
@@ -63,6 +105,7 @@ mock_weather_responses = [
                 }
             }
         ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5},
     },
     {
         "choices": [
@@ -73,6 +116,7 @@ mock_weather_responses = [
                 }
             }
         ],
+        "usage": {"prompt_tokens": 15, "completion_tokens": 7},
     },
 ]
 
@@ -109,6 +153,24 @@ async def test_get_auto_tool_completion(monkeypatch):
         == "The current weather in Amsterdam is 25 degrees Celsius."
     )
     assert tool_call_result.llm_call_count == 2
+    assert tool_call_result.metadata.input_tokens == 10 + 15
+    assert tool_call_result.metadata.output_tokens == 5 + 7
+
+    first_completion_message = tool_call_result.messages[0]
+    tool_message = tool_call_result.messages[1]
+    second_completion_message = tool_call_result.messages[2]
+    assert isinstance(first_completion_message, LlmCompletionMessage)
+    assert first_completion_message.tool_calls is not None
+    assert len(first_completion_message.tool_calls) > 0
+    assert isinstance(tool_message, LlmToolMessage)
+    assert tool_message.tool_call_id == "call_1"
+    assert (
+        isinstance(tool_message.metadata.is_async, bool)
+        and not tool_message.metadata.is_async
+    )
+    assert isinstance(second_completion_message, LlmCompletionMessage)
+    assert second_completion_message.metadata.input_tokens == 15
+    assert second_completion_message.metadata.output_tokens == 7
 
 
 @pytest.mark.asyncio
@@ -149,3 +211,6 @@ async def test_get_async_auto_tool_completion(monkeypatch):
     assert tool_message is not None
     assert tool_message.content == repr("25 degrees Celsius")
     assert tool_call_result.llm_call_count == 2
+    tool_message = tool_call_result.messages[1]
+    assert isinstance(tool_message, LlmToolMessage)
+    assert tool_message.metadata.is_async

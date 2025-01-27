@@ -30,7 +30,7 @@ class LlmFamily(BaseModel):
 
     @classmethod
     def get_family_for_model_name(cls, model_name: str) -> Optional["LlmFamily"]:
-        for family in cls._families:
+        for family in cls._families[::-1]:
             if model_name.startswith(family.name):
                 return family
         return None
