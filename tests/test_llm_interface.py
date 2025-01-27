@@ -214,3 +214,70 @@ async def test_get_async_auto_tool_completion(monkeypatch):
     tool_message = tool_call_result.messages[1]
     assert isinstance(tool_message, LlmToolMessage)
     assert tool_message.metadata.is_async
+
+
+@pytest.mark.asyncio
+async def test_get_auto_tool_completion_non_auto_tool(monkeypatch):
+    """Test tool call that should not be automatically excuted."""
+    llm_interface = LLMInterface(openai_api_key="test_key", verbose=False)
+
+    def get_weather(city: str) -> str:
+        raise Exception("Should not be auto executed")
+
+    response_iter = iter(mock_weather_responses)
+
+    def mock_post(*args, **kwargs):
+        return MockResponse(next(response_iter), 200)
+
+    monkeypatch.setattr("aiohttp.ClientSession.post", mock_post)
+
+    tool_call_result = await llm_interface.get_auto_tool_completion(
+        messages=[
+            {"role": "user", "content": "What is the weather in Amsterdam?"},
+        ],
+        model="gpt-4o-mini",
+        non_auto_execute_tools=[get_weather],
+    )
+
+    # There should be only a completion with the tool call
+    assert len(tool_call_result.messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_auto_tool_completion_max_depth(monkeypatch):
+    """Test that we stop at the correct amount of calls if the LLM keeps calling a tool."""
+    llm_interface = LLMInterface(openai_api_key="test_key", verbose=False)
+
+    def get_weather(city: str) -> str:
+        """Get the current temperature for a given location
+
+        :param city: City and country e.g. Bogotá, Colombia
+        """
+        return "25 degrees Celsius"
+
+    def mock_post(*args, **kwargs):
+        # Only ever return first response with tool call
+        return MockResponse(mock_weather_responses[0], 200)
+
+    monkeypatch.setattr("aiohttp.ClientSession.post", mock_post)
+
+    tool_call_result = await llm_interface.get_auto_tool_completion(
+        messages=[
+            {"role": "user", "content": "What is the weather in Amsterdam?"},
+        ],
+        model="gpt-4o-mini",
+        auto_execute_tools=[get_weather],
+        max_depth=5,
+        error_on_max_depth=False,
+    )
+
+    assert (
+        len(
+            [
+                m
+                for m in tool_call_result.messages
+                if isinstance(m, LlmCompletionMessage)
+            ]
+        )
+        == 5
+    )

@@ -53,6 +53,9 @@ async def time_coroutine(coroutine):
 class LLMInterface:
     """An interface for working with LLMs."""
 
+    class NotAllToolsMatchedException(Exception):
+        pass
+
     def __init__(self, openai_api_key: str, verbose=True, debug=False):
         self.oai_api_key = openai_api_key
         self.base_url = "https://api.openai.com/v1/"
@@ -184,7 +187,6 @@ class LLMInterface:
         if max_depth < 1:
             raise ValueError("Max depth must be at least 1.")
         new_messages: list[LlmMessage] = []
-        is_hit_max_depth = True
         for i in range(max_depth):
             completion: LlmCompletionMessage = await self.get_completion(
                 messages=[
@@ -198,58 +200,18 @@ class LLMInterface:
             )
             new_messages.append(completion)
             if not completion.tool_calls:
-                is_hit_max_depth = False
                 break
-            matched_tools = []
-            for tool_call in completion.tool_calls:
-                tool: Optional[Callable] = next(
-                    (t for t in auto_execute_tools if t.__name__ == tool_call.name),
-                    None,
+            try:
+                new_tool_messages = await self.__handle_tool_call_requests(
+                    completion.tool_calls, auto_execute_tools
                 )
-                matched_tools.append(tool)
-            all_matched = all(tool is not None for tool in matched_tools)
-            if not all_matched:
+                new_messages.extend(new_tool_messages)
+            except self.NotAllToolsMatchedException:
                 logger.debug(
                     "Return call with uncompleted tool calls, since not all tools should be auto executed"
                 )
-                is_hit_max_depth = False
                 break
-            async_tasks = []
-            for tool, tool_call in zip(matched_tools, completion.tool_calls):
-                if not tool:
-                    raise LlmException("No matched tool")
-                if inspect.iscoroutinefunction(tool):
-                    async_tasks.append((tool_call, tool(**tool_call.arguments)))
-                    continue
-                start = time.time()
-                result = tool(**tool_call.arguments)
-                wall_time_seconds = time.time() - start
-                tool_message = LlmToolMessage(
-                    content=repr(result),
-                    tool_call_id=tool_call.id,
-                    raw_content=result,
-                    metadata=LlmToolMessageMetadata(
-                        wall_time_seconds=wall_time_seconds, is_async=False
-                    ),
-                )
-                new_messages.append(tool_message)
-            if async_tasks:
-                results = await asyncio.gather(
-                    *(time_coroutine(task[1]) for task in async_tasks)
-                )
-                new_messages.extend(
-                    [
-                        LlmToolMessage(
-                            content=repr(result[0]),
-                            tool_call_id=task[0].id,
-                            raw_content=result[0],
-                            metadata=LlmToolMessageMetadata(
-                                wall_time_seconds=result[1], is_async=True
-                            ),
-                        )
-                        for result, task in zip(results, async_tasks)
-                    ]
-                )
+        is_hit_max_depth = i >= max_depth - 1
         if is_hit_max_depth:
             logger.error("Max depth reached")
             if error_on_max_depth:
@@ -277,6 +239,59 @@ class LLMInterface:
         )
         result = LlmMultiMessageCompletion(messages=new_messages, metadata=metadata)
         return result
+
+    async def __handle_tool_call_requests(
+        self, tool_calls: list[LlmToolCall], auto_execute_tools: list[Callable]
+    ) -> list[LlmMessage]:
+        """Execute tool call requests obtained from the LLM."""
+        new_messages: list[LlmMessage] = []
+        matched_tools = []
+        for tool_call in tool_calls:
+            tool: Optional[Callable] = next(
+                (t for t in auto_execute_tools if t.__name__ == tool_call.name),
+                None,
+            )
+            matched_tools.append(tool)
+        all_matched = all(tool is not None for tool in matched_tools)
+        if not all_matched:
+            raise self.NotAllToolsMatchedException
+        async_tasks = []
+        for tool, tool_call in zip(matched_tools, tool_calls):
+            if not tool:
+                raise LlmException("No matched tool")
+            if inspect.iscoroutinefunction(tool):
+                async_tasks.append((tool_call, tool(**tool_call.arguments)))
+                continue
+            start = time.time()
+            result = tool(**tool_call.arguments)
+            wall_time_seconds = time.time() - start
+            tool_message = LlmToolMessage(
+                content=repr(result),
+                tool_call_id=tool_call.id,
+                raw_content=result,
+                metadata=LlmToolMessageMetadata(
+                    wall_time_seconds=wall_time_seconds, is_async=False
+                ),
+            )
+            new_messages.append(tool_message)
+        if async_tasks:
+            results = await asyncio.gather(
+                *(time_coroutine(task[1]) for task in async_tasks)
+            )
+            new_messages.extend(
+                [
+                    LlmToolMessage(
+                        content=repr(result[0]),
+                        tool_call_id=task[0].id,
+                        raw_content=result[0],
+                        metadata=LlmToolMessageMetadata(
+                            wall_time_seconds=result[1], is_async=True
+                        ),
+                    )
+                    for result, task in zip(results, async_tasks)
+                ]
+            )
+        return new_messages
 
     @staticmethod
     def safe_nested_get(data, keys):
