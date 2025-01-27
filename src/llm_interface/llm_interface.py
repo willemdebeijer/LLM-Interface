@@ -1,7 +1,10 @@
+import asyncio
 import inspect
 import json
 import logging
 import time
+import uuid
+from collections.abc import Sequence
 from enum import Enum
 from typing import (
     Any,
@@ -9,16 +12,14 @@ from typing import (
     List,
     Literal,
     Optional,
+    Union,
     get_args,
     get_origin,
     get_type_hints,
 )
 
-import aiohttp
-from pydantic import BaseModel
-
-from llm_interface.exception import LlmException, RateLimitException
-from llm_interface.llm import LlmFamily
+from llm_interface.exception import LlmException
+from llm_interface.llm_handler import AbstractLlmHandler, OpenAiLlmHandler
 from llm_interface.model import (
     LlmCompletionMessage,
     LlmCompletionMetadata,
@@ -27,8 +28,10 @@ from llm_interface.model import (
     LlmSystemMessage,
     LlmToolCall,
     LlmToolMessage,
+    LlmToolMessageMetadata,
     LlmUserMessage,
 )
+from llm_interface.recorder import DebugRecorder
 
 logger = logging.getLogger(__name__)
 
@@ -37,27 +40,51 @@ logging.basicConfig(
 )
 
 
+async def time_coroutine(coroutine):
+    """Await coroutine and return its results and the duration in seconds"""
+    start = time.time()
+    result = await coroutine
+    end = time.time()
+    return result, end - start
+
+
 class LLMInterface:
     """An interface for working with LLMs."""
 
-    def __init__(self, openai_api_key: str, verbose=True):
-        self.oai_api_key = openai_api_key
-        self.base_url = "https://api.openai.com/v1/"
+    class NotAllToolsMatchedException(Exception):
+        pass
+
+    def __init__(
+        self,
+        openai_api_key: str | None = None,
+        handler: AbstractLlmHandler | None = None,
+        verbose=True,
+        debug=False,
+    ):
+        if handler:
+            self.handler = handler
+        elif openai_api_key:
+            self.handler: AbstractLlmHandler = OpenAiLlmHandler(openai_api_key)
+        else:
+            raise Exception("Please provide `openai_api_key` or `handler`")
         self.verbose = verbose
+        self.debug = (
+            debug  # Will record all LLM calls and make them available to the viewer
+        )
+        self.recorders = []
+        if debug:
+            self.recorders.append(DebugRecorder())
         if verbose:
             logger.setLevel(logging.DEBUG)
 
     async def get_completion(
         self,
-        messages: list[dict[str, Any] | LlmMessage],
+        messages: Sequence[Union[LlmMessage, dict[str, Any]]],
         model: str,
         temperature: float = 0.7,
         tools: list[Callable] | None = None,
+        **kwargs,
     ) -> LlmCompletionMessage:
-        start_time = time.time()
-
-        headers = {"Authorization": f"Bearer {self.oai_api_key}"}
-        url = f"{self.base_url}chat/completions"
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
         message_objs = [
             self.convert_to_llm_message_obj(message) for message in messages
@@ -82,55 +109,20 @@ class LLMInterface:
                 f"Input messages:\n{self._format_for_log(serialized_messages)}"
             )
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
-                if response.status == 429:
-                    raise RateLimitException("API rate limit exceeded")
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise LlmException(
-                        f"OpenAI API status code {response.status}, error: {error_text}"
-                    )
-                result = await response.json()
+        completion_message: LlmCompletionMessage = await self.handler.call(data)
 
-        text = self.safe_nested_get(result, ("choices", 0, "message", "content"))
-        raw_tool_calls = self.safe_nested_get(
-            result, ("choices", 0, "message", "tool_calls")
-        )
-        tool_calls = []
-        if raw_tool_calls:
-            tool_calls = [
-                LlmToolCall(
-                    id=raw_tool_call["id"],
-                    name=raw_tool_call["function"]["name"],
-                    arguments=json.loads(raw_tool_call["function"]["arguments"]),
-                )
-                for raw_tool_call in raw_tool_calls
-            ]
-
-        end_time = time.time()
-        duration = end_time - start_time
-        llm_model_name = self.safe_nested_get(result, ("model",))
-        llm_family = (
-            LlmFamily.get_family_for_model_name(llm_model_name)
-            if llm_model_name
-            else None
-        )
-        metadata = LlmCompletionMetadata(
-            input_tokens=self.safe_nested_get(result, ("usage", "prompt_tokens")),
-            output_tokens=self.safe_nested_get(result, ("usage", "completion_tokens")),
-            duration_seconds=duration,
-            llm_model_name=llm_model_name,
-            llm_family=llm_family,
-        )
+        for recorder in self.recorders:
+            recorder.record(
+                model=model, messages=message_objs + [completion_message], **kwargs
+            )
         logger.debug(
-            f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
+            f"OpenAI response in {completion_message.metadata.duration_seconds or 0:.2f}s "
+            f"has {len(completion_message.content or '')} characters "
+            f"and {len(completion_message.tool_calls or [])} tool calls"
         )
         if self.verbose:
             logger.debug("-" * 64)
-        return LlmCompletionMessage(
-            content=text, tool_calls=tool_calls, metadata=metadata
-        )
+        return completion_message
 
     def _format_for_log(self, obj: Any, prefix: str = "   ") -> str:
         """Format an object for readable logging"""
@@ -139,13 +131,13 @@ class LLMInterface:
                 return "\n".join(
                     prefix + line for line in json.dumps(obj, indent=2).splitlines()
                 )
-        except Exception as e:
+        except Exception:
             pass
         return str(obj)
 
     async def get_auto_tool_completion(
         self,
-        messages: list[dict[str, Any] | LlmMessage],
+        messages: Sequence[Union[LlmMessage, dict[str, Any]]],
         model: str,
         temperature: float = 0.7,
         auto_execute_tools: list[Callable] = [],
@@ -155,41 +147,35 @@ class LLMInterface:
     ) -> LlmMultiMessageCompletion:
         """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message)."""
         start_time = time.time()
+        chat_id = str(uuid.uuid4())
         if max_depth < 1:
             raise ValueError("Max depth must be at least 1.")
         new_messages: list[LlmMessage] = []
-        is_hit_max_depth = True
         for i in range(max_depth):
             completion: LlmCompletionMessage = await self.get_completion(
-                messages=messages + new_messages,
+                messages=[
+                    *messages,
+                ]
+                + [*new_messages],
                 model=model,
                 temperature=temperature,
                 tools=auto_execute_tools + non_auto_execute_tools,
+                chat_id=chat_id,
             )
             new_messages.append(completion)
             if not completion.tool_calls:
-                is_hit_max_depth = False
                 break
-            matched_tools = []
-            for tool_call in completion.tool_calls:
-                tool: Optional[Callable] = next(
-                    (t for t in auto_execute_tools if t.__name__ == tool_call.name),
-                    None,
+            try:
+                new_tool_messages = await self.__handle_tool_call_requests(
+                    completion.tool_calls, auto_execute_tools
                 )
-                matched_tools.append(tool)
-            all_matched = all(tool is not None for tool in matched_tools)
-            if not all_matched:
+                new_messages.extend(new_tool_messages)
+            except self.NotAllToolsMatchedException:
                 logger.debug(
                     "Return call with uncompleted tool calls, since not all tools should be auto executed"
                 )
-                is_hit_max_depth = False
                 break
-            for tool, tool_call in zip(matched_tools, completion.tool_calls):
-                result = tool(**tool_call.arguments)
-                tool_message = LlmToolMessage(
-                    content=repr(result), tool_call_id=tool_call.id, raw_content=result
-                )
-                new_messages.append(tool_message)
+        is_hit_max_depth = i >= max_depth - 1
         if is_hit_max_depth:
             logger.error("Max depth reached")
             if error_on_max_depth:
@@ -203,28 +189,73 @@ class LLMInterface:
         duration = end_time - start_time
 
         metadata = LlmCompletionMetadata(
-            input_tokens=sum(i.metadata.input_tokens for i in completion_messages)
+            input_tokens=sum(i.metadata.input_tokens or 0 for i in completion_messages)
             if all(i.metadata.input_tokens is not None for i in completion_messages)
             else None,
-            output_tokens=sum(i.metadata.output_tokens for i in completion_messages)
+            output_tokens=sum(
+                i.metadata.output_tokens or 0 for i in completion_messages
+            )
             if all(i.metadata.output_tokens is not None for i in completion_messages)
             else None,
             duration_seconds=duration,
-            llm_model_name=completion_messages[-1].metadata.llm_model_name,
-            llm_family=completion_messages[-1].metadata.llm_family,
+            llm_model_version=completion_messages[-1].metadata.llm_model_version,
+            llm_model=completion_messages[-1].metadata.llm_model,
         )
         result = LlmMultiMessageCompletion(messages=new_messages, metadata=metadata)
         return result
 
-    @staticmethod
-    def safe_nested_get(data, keys):
-        """Get a nested value from a dictionary/list safely."""
-        for key in keys:
-            try:
-                data = data[key]
-            except (KeyError, IndexError, TypeError):
-                return None
-        return data
+    async def __handle_tool_call_requests(
+        self, tool_calls: list[LlmToolCall], auto_execute_tools: list[Callable]
+    ) -> list[LlmMessage]:
+        """Execute tool call requests obtained from the LLM."""
+        new_messages: list[LlmMessage] = []
+        matched_tools = []
+        for tool_call in tool_calls:
+            tool: Optional[Callable] = next(
+                (t for t in auto_execute_tools if t.__name__ == tool_call.name),
+                None,
+            )
+            matched_tools.append(tool)
+        all_matched = all(tool is not None for tool in matched_tools)
+        if not all_matched:
+            raise self.NotAllToolsMatchedException
+        async_tasks = []
+        for tool, tool_call in zip(matched_tools, tool_calls):
+            if not tool:
+                raise LlmException("No matched tool")
+            if inspect.iscoroutinefunction(tool):
+                async_tasks.append((tool_call, tool(**tool_call.arguments)))
+                continue
+            start = time.time()
+            result = tool(**tool_call.arguments)
+            wall_time_seconds = time.time() - start
+            tool_message = LlmToolMessage(
+                content=repr(result),
+                tool_call_id=tool_call.id,
+                raw_content=result,
+                metadata=LlmToolMessageMetadata(
+                    wall_time_seconds=wall_time_seconds, is_async=False
+                ),
+            )
+            new_messages.append(tool_message)
+        if async_tasks:
+            results = await asyncio.gather(
+                *(time_coroutine(task[1]) for task in async_tasks)
+            )
+            new_messages.extend(
+                [
+                    LlmToolMessage(
+                        content=repr(result[0]),
+                        tool_call_id=task[0].id,
+                        raw_content=result[0],
+                        metadata=LlmToolMessageMetadata(
+                            wall_time_seconds=result[1], is_async=True
+                        ),
+                    )
+                    for result, task in zip(results, async_tasks)
+                ]
+            )
+        return new_messages
 
     @classmethod
     def convert_to_llm_message_obj(cls, message_dict: dict | LlmMessage) -> LlmMessage:
@@ -249,11 +280,11 @@ class LLMInterface:
 
     @classmethod
     def convert_to_llm_message_dict(cls, message_obj: LlmMessage | dict) -> dict:
-        """Convert a LLM message object to a dictionary"""
+        """Convert a LLM message object to a dictionary, leaving out values that should not be sent to the API"""
         if isinstance(message_obj, dict):
             return message_obj
         if isinstance(message_obj, LlmCompletionMessage):
-            d = {"role": message_obj.role}
+            d: dict[str, Any] = {"role": message_obj.role}
             if message_obj.content is not None:
                 d["content"] = message_obj.content
             if message_obj.tool_calls is not None:
@@ -270,7 +301,7 @@ class LLMInterface:
                 ]
             return d
         if isinstance(message_obj, LlmToolMessage):
-            message_obj.model_dump(exclude={"raw_content"})
+            return message_obj.model_dump(exclude={"raw_content", "metadata"})
         return message_obj.model_dump()
 
     @classmethod
