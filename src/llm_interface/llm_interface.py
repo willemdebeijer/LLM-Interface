@@ -18,10 +18,8 @@ from typing import (
     get_type_hints,
 )
 
-import aiohttp
-
-from llm_interface.exception import LlmException, RateLimitException
-from llm_interface.llm import LlmFamily
+from llm_interface.exception import LlmException
+from llm_interface.llm_handler import AbstractLlmHandler, OpenAILLMHandler
 from llm_interface.model import (
     LlmCompletionMessage,
     LlmCompletionMetadata,
@@ -57,8 +55,7 @@ class LLMInterface:
         pass
 
     def __init__(self, openai_api_key: str, verbose=True, debug=False):
-        self.oai_api_key = openai_api_key
-        self.base_url = "https://api.openai.com/v1/"
+        self.handler: AbstractLlmHandler = OpenAILLMHandler(openai_api_key)
         self.verbose = verbose
         self.debug = (
             debug  # Will record all LLM calls and make them available to the viewer
@@ -77,10 +74,6 @@ class LLMInterface:
         tools: list[Callable] | None = None,
         **kwargs,
     ) -> LlmCompletionMessage:
-        start_time = time.time()
-
-        headers = {"Authorization": f"Bearer {self.oai_api_key}"}
-        url = f"{self.base_url}chat/completions"
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
         message_objs = [
             self.convert_to_llm_message_obj(message) for message in messages
@@ -105,56 +98,16 @@ class LLMInterface:
                 f"Input messages:\n{self._format_for_log(serialized_messages)}"
             )
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
-                if response.status == 429:
-                    raise RateLimitException("API rate limit exceeded")
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise LlmException(
-                        f"OpenAI API status code {response.status}, error: {error_text}"
-                    )
-                result = await response.json()
+        completion_message: LlmCompletionMessage = await self.handler.call(data)
 
-        text = self.safe_nested_get(result, ("choices", 0, "message", "content"))
-        raw_tool_calls = self.safe_nested_get(
-            result, ("choices", 0, "message", "tool_calls")
-        )
-        tool_calls = []
-        if raw_tool_calls:
-            tool_calls = [
-                LlmToolCall(
-                    id=raw_tool_call["id"],
-                    name=raw_tool_call["function"]["name"],
-                    arguments=json.loads(raw_tool_call["function"]["arguments"]),
-                )
-                for raw_tool_call in raw_tool_calls
-            ]
-
-        end_time = time.time()
-        duration = end_time - start_time
-        llm_model_name = self.safe_nested_get(result, ("model",))
-        llm_family = (
-            LlmFamily.get_family_for_model_name(llm_model_name)
-            if llm_model_name
-            else None
-        )
-        metadata = LlmCompletionMetadata(
-            input_tokens=self.safe_nested_get(result, ("usage", "prompt_tokens")),
-            output_tokens=self.safe_nested_get(result, ("usage", "completion_tokens")),
-            duration_seconds=duration,
-            llm_model_name=llm_model_name,
-            llm_family=llm_family,
-        )
-        completion_message = LlmCompletionMessage(
-            content=text, tool_calls=tool_calls, metadata=metadata
-        )
         for recorder in self.recorders:
             recorder.record(
                 model=model, messages=message_objs + [completion_message], **kwargs
             )
         logger.debug(
-            f"OpenAI response in {duration:.2f}s has {len(text or '')} characters and {len(tool_calls)} tool calls"
+            f"OpenAI response in {completion_message.metadata.duration_seconds or 0:.2f}s "
+            f"has {len(completion_message.content or '')} characters "
+            f"and {len(completion_message.tool_calls or [])} tool calls"
         )
         if self.verbose:
             logger.debug("-" * 64)
@@ -292,16 +245,6 @@ class LLMInterface:
                 ]
             )
         return new_messages
-
-    @staticmethod
-    def safe_nested_get(data, keys):
-        """Get a nested value from a dictionary/list safely."""
-        for key in keys:
-            try:
-                data = data[key]
-            except (KeyError, IndexError, TypeError):
-                return None
-        return data
 
     @classmethod
     def convert_to_llm_message_obj(cls, message_dict: dict | LlmMessage) -> LlmMessage:
