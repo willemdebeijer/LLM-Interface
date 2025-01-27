@@ -64,23 +64,29 @@
                     ${message.role === 'assistant' && message.metadata ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata.duration_seconds.toFixed(3)}s
-                                &bull; $${message.metadata.cost_usd.toFixed(6).slice(0,4)}<span class="cost-sub-cent-decimals">${message.metadata.cost_usd.toFixed(6).slice(4)}</span>
+                                ${message.metadata.duration_seconds ? `${message.metadata.duration_seconds.toFixed(3)}s` : ''}
+                                ${message.metadata.duration_seconds && message.metadata.cost_usd ? '&bull;' : ''}
+                                ${message.metadata.cost_usd ? `$${message.metadata.cost_usd.toFixed(6).slice(0,4)}<span class="cost-sub-cent-decimals">${message.metadata.cost_usd.toFixed(6).slice(4)}</span>` : ''}
                             </div>
-                            <div class="metadata-bottom">
-                                ${message.metadata.input_tokens} / ${message.metadata.output_tokens} tokens
-                            </div>
+                            ${(message.metadata.input_tokens !== undefined || message.metadata.output_tokens !== undefined) ? `
+                                <div class="metadata-bottom">
+                                    ${message.metadata.input_tokens ?? 0} / ${message.metadata.output_tokens ?? 0} tokens
+                                </div>
+                            ` : ''}
                         </span>
                     ` : ''}
                     ${message.role === 'tool' ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata.wall_time_seconds.toFixed(3)}s wall time
-                                &bull; ${message.metadata.is_async ? 'asynchronous' : 'synchronous'}
+                                ${message.metadata?.wall_time_seconds ? `${message.metadata.wall_time_seconds.toFixed(3)}s wall time` : ''}
+                                ${message.metadata?.wall_time_seconds && message.metadata?.is_async !== undefined ? '&bull;' : ''}
+                                ${message.metadata?.is_async !== undefined ? `${message.metadata.is_async ? 'asynchronous' : 'synchronous'}` : ''}
                             </div>
-                            <div class="metadata-bottom">
-                                ${message.tool_call_id}
-                            </div>
+                            ${message.tool_call_id ? `
+                                <div class="metadata-bottom">
+                                    ${message.tool_call_id}
+                                </div>
+                            ` : ''}
                         </span>
                     ` : ''}
                 </div>
