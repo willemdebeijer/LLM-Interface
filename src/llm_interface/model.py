@@ -2,7 +2,7 @@ from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from llm_interface.llm import LlmFamily
+from llm_interface.llm import LlmModel
 
 
 class LlmSystemMessage(BaseModel):
@@ -42,14 +42,16 @@ class LlmCompletionMetadata(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     duration_seconds: float | None = None
-    llm_model_name: str | None = None
-    llm_family: LlmFamily | None = None
+    llm_model_version: str | None = (
+        None  # Exact checkpoint/version, generally includes release date for OpenAI and is returned by the API
+    )
+    llm_model: LlmModel | None = None
 
     @computed_field
     def input_cost_usd(self) -> float | None:
         if (
-            (llm_family := self.llm_family)
-            and (usd_per_1m_input_tokens := llm_family.usd_per_1m_input_tokens)
+            (llm_model := self.llm_model)
+            and (usd_per_1m_input_tokens := llm_model.usd_per_1m_input_tokens)
             and (input_tokens := self.input_tokens)
         ):
             return usd_per_1m_input_tokens * input_tokens / 1_000_000
@@ -58,8 +60,8 @@ class LlmCompletionMetadata(BaseModel):
     @computed_field
     def output_cost_usd(self) -> float | None:
         if (
-            (llm_family := self.llm_family)
-            and (usd_per_1m_output_tokens := llm_family.usd_per_1m_output_tokens)
+            (llm_model := self.llm_model)
+            and (usd_per_1m_output_tokens := llm_model.usd_per_1m_output_tokens)
             and (output_tokens := self.output_tokens)
         ):
             return usd_per_1m_output_tokens * output_tokens / 1_000_000

@@ -7,7 +7,7 @@ import aiohttp
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.helpers import safe_nested_get
-from llm_interface.llm import LlmFamily, LlmProvider, openai
+from llm_interface.llm import LlmModel, LlmProvider, openai
 from llm_interface.model import LlmCompletionMessage, LlmCompletionMetadata, LlmToolCall
 
 
@@ -67,18 +67,18 @@ class OpenAILLMHandler(AbstractLlmHandler):
 
         end_time = time.time()
         duration = end_time - start_time
-        llm_model_name = safe_nested_get(result, ("model",))
-        llm_family = (
-            LlmFamily.get_family_for_model_name(llm_model_name, provider=self.provider)
-            if llm_model_name
+        llm_model_version = safe_nested_get(result, ("model",))
+        llm_model = (
+            LlmModel.get_model_for_model_name(llm_model_version, provider=self.provider)
+            if llm_model_version
             else None
         )
         metadata = LlmCompletionMetadata(
             input_tokens=safe_nested_get(result, ("usage", "prompt_tokens")),
             output_tokens=safe_nested_get(result, ("usage", "completion_tokens")),
             duration_seconds=duration,
-            llm_model_name=llm_model_name,
-            llm_family=llm_family,
+            llm_model_version=llm_model_version,
+            llm_model=llm_model,
         )
         completion_message = LlmCompletionMessage(
             content=text, tool_calls=tool_calls, metadata=metadata

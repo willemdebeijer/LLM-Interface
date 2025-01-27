@@ -198,8 +198,8 @@ class LLMInterface:
             if all(i.metadata.output_tokens is not None for i in completion_messages)
             else None,
             duration_seconds=duration,
-            llm_model_name=completion_messages[-1].metadata.llm_model_name,
-            llm_family=completion_messages[-1].metadata.llm_family,
+            llm_model_version=completion_messages[-1].metadata.llm_model_version,
+            llm_model=completion_messages[-1].metadata.llm_model,
         )
         result = LlmMultiMessageCompletion(messages=new_messages, metadata=metadata)
         return result

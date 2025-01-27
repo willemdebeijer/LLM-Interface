@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from llm_interface import LLMInterface
-from llm_interface.llm import LlmFamily, openai
+from llm_interface.llm import LlmModel, openai
 from llm_interface.model import LlmCompletionMessage, LlmToolMessage
 
 
@@ -53,7 +53,7 @@ async def test_get_completion_with_metadata(monkeypatch):
     """Test the completion uses the metadata."""
 
     # Create fake model provider
-    llm_family = LlmFamily(
+    llm_model = LlmModel(
         name="gpt-4o",
         provider=openai,
         usd_per_1m_input_tokens=0.1,
@@ -83,8 +83,8 @@ async def test_get_completion_with_metadata(monkeypatch):
     assert result.metadata.input_tokens == 10
     assert result.metadata.output_tokens == 5
     assert result.metadata.duration_seconds or 0 > 0
-    assert result.metadata.llm_model_name == "gpt-4o-v1"
-    assert result.metadata.llm_family == llm_family
+    assert result.metadata.llm_model_version == "gpt-4o-v1"
+    assert result.metadata.llm_model == llm_model
     assert result.metadata.input_cost_usd or 0 > 0
     assert result.metadata.output_cost_usd or 0 > 0
     assert result.metadata.cost_usd or 0 > 0
