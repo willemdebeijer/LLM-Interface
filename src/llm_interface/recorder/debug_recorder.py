@@ -3,7 +3,7 @@ import os
 import uuid
 from datetime import datetime
 
-from llm_interface.model import LlmMessage
+from llm_interface.model import LlmMessage, LlmToolMessage
 
 
 class DebugRecorder:
@@ -16,6 +16,19 @@ class DebugRecorder:
         os.makedirs(output_dir, exist_ok=True)
         self._chat_id_to_filename_cache: dict[str, str] = {}
 
+    @classmethod
+    def _dump_message(cls, message: LlmMessage) -> dict:
+        # Make sure `raw_content` of `LlmToolMessage` is not included if it's not JSON serializable.
+        # This is required to save the file to a JSON.
+        if not isinstance(message, LlmToolMessage):
+            return message.model_dump()
+        try:
+            result = message.model_dump()
+            _ = json.dumps(result)
+            return result
+        except TypeError:
+            return message.model_dump(exclude={"raw_content"})
+
     def record(self, model: str, messages: list[LlmMessage], *args, **kwargs):
         """Record a LLM completion call."""
         call_id = uuid.uuid4()
@@ -24,7 +37,7 @@ class DebugRecorder:
             "id": str(call_id),
             "timestamp": dt.isoformat(),
             "model": model,
-            "messages": [msg.model_dump() for msg in messages],
+            "messages": [self._dump_message(msg) for msg in messages],
         }
         # If stored chat with same chat id exists then overwrite it to prevent duplicates
         chat_id = kwargs.get("chat_id", None)

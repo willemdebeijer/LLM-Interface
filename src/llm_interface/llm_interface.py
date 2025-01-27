@@ -280,7 +280,7 @@ class LLMInterface:
 
     @classmethod
     def convert_to_llm_message_dict(cls, message_obj: LlmMessage | dict) -> dict:
-        """Convert a LLM message object to a dictionary"""
+        """Convert a LLM message object to a dictionary, leaving out values that should not be sent to the API"""
         if isinstance(message_obj, dict):
             return message_obj
         if isinstance(message_obj, LlmCompletionMessage):
@@ -301,7 +301,7 @@ class LLMInterface:
                 ]
             return d
         if isinstance(message_obj, LlmToolMessage):
-            message_obj.model_dump(exclude={"raw_content"})
+            return message_obj.model_dump(exclude={"raw_content", "metadata"})
         return message_obj.model_dump()
 
     @classmethod

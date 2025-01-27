@@ -31,6 +31,9 @@ class LlmToolMessage(BaseModel):
     )
     metadata: LlmToolMessageMetadata = Field(default_factory=LlmToolMessageMetadata)
 
+    # Allow arbitrary types for raw_content
+    model_config = {"arbitrary_types_allowed": True}
+
 
 class LlmToolCall(BaseModel):
     id: str
