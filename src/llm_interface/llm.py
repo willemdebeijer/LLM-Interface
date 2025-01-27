@@ -3,6 +3,25 @@ from typing import ClassVar, Optional
 from pydantic import BaseModel, ConfigDict
 
 
+class LlmProvider(BaseModel):
+    """An API that gives us access to LLMs.
+
+    Note that the same LLM can be on multiple providers, for example with the open source Llama models.
+    """
+
+    name: str
+
+    _all: ClassVar[list["LlmProvider"]] = []
+
+    @classmethod
+    def get_all(cls) -> list["LlmProvider"]:
+        return cls._all
+
+
+openai = LlmProvider(name="OpenAI")
+groq = LlmProvider(name="Groq")
+
+
 class LlmFamily(BaseModel):
     """Family of LLMs such as GPT-4o which can have different versions.
 
@@ -12,6 +31,7 @@ class LlmFamily(BaseModel):
     """
 
     name: str
+    provider: LlmProvider
     usd_per_1m_input_tokens: float | None = (
         None  # Currently ignores possible discount for cached tokens
     )
@@ -29,8 +49,12 @@ class LlmFamily(BaseModel):
         return cls._families
 
     @classmethod
-    def get_family_for_model_name(cls, model_name: str) -> Optional["LlmFamily"]:
+    def get_family_for_model_name(
+        cls, model_name: str, provider: LlmProvider | None = None
+    ) -> Optional["LlmFamily"]:
         for family in cls._families[::-1]:
+            if provider and family.provider != provider:
+                continue
             if model_name.startswith(family.name):
                 return family
         return None
@@ -40,13 +64,30 @@ class LlmFamily(BaseModel):
     )
 
 
+# OpenAI models
 gpt_4o = LlmFamily(
-    name="gpt-4o", usd_per_1m_input_tokens=2.5, usd_per_1m_output_tokens=10
+    name="gpt-4o",
+    provider=openai,
+    usd_per_1m_input_tokens=2.5,
+    usd_per_1m_output_tokens=10,
 )
 gpt_4o_mini = LlmFamily(
-    name="gpt-4o-mini", usd_per_1m_input_tokens=0.15, usd_per_1m_output_tokens=0.6
+    name="gpt-4o-mini",
+    provider=openai,
+    usd_per_1m_input_tokens=0.15,
+    usd_per_1m_output_tokens=0.6,
 )
-o1 = LlmFamily(name="o1", usd_per_1m_input_tokens=15, usd_per_1m_output_tokens=60)
+o1 = LlmFamily(
+    name="o1", provider=openai, usd_per_1m_input_tokens=15, usd_per_1m_output_tokens=60
+)
 o1_mini = LlmFamily(
-    name="o1-mini", usd_per_1m_input_tokens=3, usd_per_1m_output_tokens=12
+    name="o1-mini",
+    provider=openai,
+    usd_per_1m_input_tokens=3,
+    usd_per_1m_output_tokens=12,
 )
+
+# Groq models
+# groq_llama_3_3_70b_specdec_8k = LlmFamily(
+#     name="llama-3.3-"
+# )

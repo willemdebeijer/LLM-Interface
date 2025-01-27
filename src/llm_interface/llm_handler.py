@@ -7,7 +7,7 @@ import aiohttp
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.helpers import safe_nested_get
-from llm_interface.llm import LlmFamily
+from llm_interface.llm import LlmFamily, LlmProvider, openai
 from llm_interface.model import LlmCompletionMessage, LlmCompletionMetadata, LlmToolCall
 
 
@@ -23,15 +23,22 @@ class AbstractLlmHandler(ABC):
 
 
 class OpenAILLMHandler(AbstractLlmHandler):
-    def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1/"):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.openai.com/v1/",
+        provider: LlmProvider = openai,
+    ):
         self.api_key = api_key
         self.base_url = base_url
+        self.provider = provider
 
     async def call(self, data: dict[str, Any]) -> LlmCompletionMessage:
         start_time = time.time()
 
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        url = f"{self.base_url}chat/completions"
+        slash = "/" if not self.base_url.endswith("/") else ""
+        url = f"{self.base_url}{slash}chat/completions"
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 429:
@@ -62,7 +69,7 @@ class OpenAILLMHandler(AbstractLlmHandler):
         duration = end_time - start_time
         llm_model_name = safe_nested_get(result, ("model",))
         llm_family = (
-            LlmFamily.get_family_for_model_name(llm_model_name)
+            LlmFamily.get_family_for_model_name(llm_model_name, provider=self.provider)
             if llm_model_name
             else None
         )

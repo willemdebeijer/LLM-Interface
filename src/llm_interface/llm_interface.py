@@ -54,8 +54,19 @@ class LLMInterface:
     class NotAllToolsMatchedException(Exception):
         pass
 
-    def __init__(self, openai_api_key: str, verbose=True, debug=False):
-        self.handler: AbstractLlmHandler = OpenAILLMHandler(openai_api_key)
+    def __init__(
+        self,
+        openai_api_key: str | None = None,
+        handler: AbstractLlmHandler | None = None,
+        verbose=True,
+        debug=False,
+    ):
+        if handler:
+            self.handler = handler
+        elif openai_api_key:
+            self.handler: AbstractLlmHandler = OpenAILLMHandler(openai_api_key)
+        else:
+            raise Exception("Please provide `openai_api_key` or `handler`")
         self.verbose = verbose
         self.debug = (
             debug  # Will record all LLM calls and make them available to the viewer

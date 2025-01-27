@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from llm_interface import LLMInterface
-from llm_interface.llm import LlmFamily
+from llm_interface.llm import LlmFamily, openai
 from llm_interface.model import LlmCompletionMessage, LlmToolMessage
 
 
@@ -54,7 +54,10 @@ async def test_get_completion_with_metadata(monkeypatch):
 
     # Create fake model provider
     llm_family = LlmFamily(
-        name="gpt-4o", usd_per_1m_input_tokens=0.1, usd_per_1m_output_tokens=1.0
+        name="gpt-4o",
+        provider=openai,
+        usd_per_1m_input_tokens=0.1,
+        usd_per_1m_output_tokens=1.0,
     )
 
     mock_response = {
