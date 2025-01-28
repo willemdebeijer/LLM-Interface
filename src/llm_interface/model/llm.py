@@ -1,6 +1,6 @@
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class LlmProvider(BaseModel):
