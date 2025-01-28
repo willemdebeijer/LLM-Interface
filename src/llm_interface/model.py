@@ -50,8 +50,8 @@ class LlmCompletionMetadata(BaseModel):
     )
     llm_model: LlmModel | None = None
 
-    @computed_field
-    def input_cost_usd(self) -> float | None:
+    @property
+    def _input_cost_usd(self) -> float | None:
         if (
             (llm_model := self.llm_model)
             and (usd_per_1m_input_tokens := llm_model.usd_per_1m_input_tokens)
@@ -61,7 +61,11 @@ class LlmCompletionMetadata(BaseModel):
         return None
 
     @computed_field
-    def output_cost_usd(self) -> float | None:
+    def input_cost_usd(self) -> float | None:
+        return self._input_cost_usd
+
+    @property
+    def _output_cost_usd(self) -> float | None:
         if (
             (llm_model := self.llm_model)
             and (usd_per_1m_output_tokens := llm_model.usd_per_1m_output_tokens)
@@ -71,14 +75,16 @@ class LlmCompletionMetadata(BaseModel):
         return None
 
     @computed_field
+    def output_cost_usd(self) -> float | None:
+        return self._output_cost_usd
+
+    @computed_field
     def cost_usd(self) -> float | None:
-        if (input_cost_usd := self.input_cost_usd) and (
-            output_cost_usd := self.output_cost_usd
+        if (input_cost_usd := self._input_cost_usd) and (
+            output_cost_usd := self._output_cost_usd
         ):
             return input_cost_usd + output_cost_usd
         return None
-
-    model_config = ConfigDict(computed_fields=True)
 
 
 class LlmCompletionMessage(BaseModel):
@@ -100,11 +106,28 @@ class LlmMultiMessageCompletion(BaseModel):
     metadata: LlmCompletionMetadata  # The combined metadata, e.g. total tokens, total duration etc
 
     @property
+    def completion_messages(self) -> list[LlmCompletionMessage]:
+        return [m for m in self.messages if isinstance(m, LlmCompletionMessage)]
+
+    @property
+    def completion_message(self) -> LlmCompletionMessage | None:
+        """The final message of the completion"""
+        if len(self.completion_messages) == 0:
+            return None
+        return self.completion_messages[-1]
+
+    @property
     def content(self) -> str | None:
         """The content of the final message"""
-        if not self.messages:
-            return None
-        return self.messages[-1].content
+        if completion_message := self.completion_message:
+            return completion_message.content
+        return None
+
+    @property
+    def tool_calls(self) -> list[LlmToolCall] | None:
+        if completion_message := self.completion_message:
+            return completion_message.tool_calls
+        return None
 
     @computed_field
     def llm_call_count(self) -> int:

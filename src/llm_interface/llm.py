@@ -59,10 +59,6 @@ class LlmModel(BaseModel):
                 return family
         return None
 
-    model_config = ConfigDict(
-        exclude=["_all"],
-    )
-
 
 # OpenAI models
 gpt_4o = LlmModel(
