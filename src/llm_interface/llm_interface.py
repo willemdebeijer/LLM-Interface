@@ -31,6 +31,7 @@ from llm_interface.model import (
     LlmToolMessageMetadata,
     LlmUserMessage,
 )
+from llm_interface.protocol import LlmRepresentable
 from llm_interface.recorder import DebugRecorder
 
 logger = logging.getLogger(__name__)
@@ -230,7 +231,7 @@ class LLMInterface:
             result = tool(**tool_call.arguments)
             wall_time_seconds = time.time() - start
             tool_message = LlmToolMessage(
-                content=repr(result),
+                content=self._get_llm_repr(result),
                 tool_call_id=tool_call.id,
                 raw_content=result,
                 metadata=LlmToolMessageMetadata(
@@ -245,7 +246,7 @@ class LLMInterface:
             new_messages.extend(
                 [
                     LlmToolMessage(
-                        content=repr(result[0]),
+                        content=self._get_llm_repr(result[0]),
                         tool_call_id=task[0].id,
                         raw_content=result[0],
                         metadata=LlmToolMessageMetadata(
@@ -390,16 +391,38 @@ class LLMInterface:
             # (you might want to use a more sophisticated docstring parser)
             param_doc = ""
             if f":param {param_name}:" in doc:
-                param_doc = doc.split(f":param {param_name}:")[1].split("\n")[0].strip()
+                str_from_param_doc = doc.split(f":param {param_name}:")[1]
+                param_doc = ""
+                for line in str_from_param_doc.split("\n"):
+                    if line.startswith(":") or line.strip() == "":
+                        break
+                    param_doc += line.strip() + "\n"
+                param_doc = param_doc.strip()
 
             param_schema["description"] = param_doc
             parameters["properties"][param_name] = param_schema
+
+        lines = doc.split("\n")
+        description = ""
+        for line in lines:
+            if ":param" in line or line.startswith("Args:"):
+                break
+            description += line + "\n"
+        # Remove trailing empty lines
+        description = description.rstrip()
 
         return {
             "type": "function",
             "function": {
                 "name": func.__name__,
-                "description": doc.split("\n")[0] if doc else "",
+                "description": description,
                 "parameters": parameters,
             },
         }
+
+    @classmethod
+    def _get_llm_repr(cls, obj: Any) -> str:
+        """Get a string representation of an object that is suitable for LLM use"""
+        if isinstance(obj, LlmRepresentable):
+            return obj.llm_repr
+        return repr(obj)
