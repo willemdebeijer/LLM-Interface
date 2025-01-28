@@ -15,6 +15,10 @@ class LLMViewerHandler(SimpleHTTPRequestHandler):
         self.debug_dir = debug_dir
         super().__init__(*args, **kwargs)
 
+    def log_message(self, format, *args):
+        # Suppress the default server log messages
+        pass
+
     def do_GET(self):
         # Parse the URL path
         parsed_path = urlparse(self.path)
