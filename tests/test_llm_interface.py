@@ -2,10 +2,12 @@ import asyncio
 from typing import Any
 
 import pytest
+from pydantic import BaseModel
 
 from llm_interface import LLMInterface
 from llm_interface.model import LlmCompletionMessage, LlmToolMessage
 from llm_interface.model.llm import LlmModel, openai
+from llm_interface.protocol import LlmRepresentable
 
 
 class MockResponse:
@@ -321,4 +323,31 @@ async def test_function_to_tool_multiline_docstring_and_parameters():
     assert (
         tool["function"]["parameters"]["properties"]["country"]["description"]
         == f"{param_2_first_line}\n{param_2_additional}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_llm_repr():
+    """Test that we can get a string representation of an object that is suitable for LLM consumption"""
+
+    class PydanticModel(BaseModel):
+        name: str
+        age: int
+
+    assert (
+        LLMInterface._get_llm_repr(PydanticModel(name="John", age=30))
+        == "PydanticModel(name='John', age=30)"
+    )
+
+    class LlmRepresentableModel(BaseModel, LlmRepresentable):
+        name: str
+        age: int
+
+        @property
+        def llm_repr(self) -> str:
+            return f"Model(name:'{self.name}', age:{self.age})"
+
+    assert (
+        LLMInterface._get_llm_repr(LlmRepresentableModel(name="John", age=30))
+        == "Model(name:'John', age:30)"
     )

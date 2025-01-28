@@ -31,6 +31,7 @@ from llm_interface.model import (
     LlmToolMessageMetadata,
     LlmUserMessage,
 )
+from llm_interface.protocol import LlmRepresentable
 from llm_interface.recorder import DebugRecorder
 
 logger = logging.getLogger(__name__)
@@ -230,7 +231,7 @@ class LLMInterface:
             result = tool(**tool_call.arguments)
             wall_time_seconds = time.time() - start
             tool_message = LlmToolMessage(
-                content=repr(result),
+                content=self._get_llm_repr(result),
                 tool_call_id=tool_call.id,
                 raw_content=result,
                 metadata=LlmToolMessageMetadata(
@@ -245,7 +246,7 @@ class LLMInterface:
             new_messages.extend(
                 [
                     LlmToolMessage(
-                        content=repr(result[0]),
+                        content=self._get_llm_repr(result[0]),
                         tool_call_id=task[0].id,
                         raw_content=result[0],
                         metadata=LlmToolMessageMetadata(
@@ -418,3 +419,10 @@ class LLMInterface:
                 "parameters": parameters,
             },
         }
+
+    @classmethod
+    def _get_llm_repr(cls, obj: Any) -> str:
+        """Get a string representation of an object that is suitable for LLM use"""
+        if isinstance(obj, LlmRepresentable):
+            return obj.llm_repr
+        return repr(obj)
