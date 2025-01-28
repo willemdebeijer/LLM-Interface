@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 
 from llm_interface import LLMInterface
-from llm_interface.llm import LlmModel, openai
 from llm_interface.model import LlmCompletionMessage, LlmToolMessage
+from llm_interface.model.llm import LlmModel, openai
 
 
 class MockResponse:

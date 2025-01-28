@@ -7,8 +7,8 @@ import aiohttp
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.helpers import safe_nested_get
-from llm_interface.llm import LlmModel, LlmProvider, openai
 from llm_interface.model import LlmCompletionMessage, LlmCompletionMetadata, LlmToolCall
+from llm_interface.model.llm import LlmModel, LlmProvider, openai
 
 
 class AbstractLlmHandler(ABC):

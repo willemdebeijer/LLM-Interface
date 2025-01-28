@@ -1,8 +1,8 @@
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, Field, computed_field
 
-from llm_interface.llm import LlmModel
+from llm_interface.model.llm import LlmModel
 
 
 class LlmSystemMessage(BaseModel):
@@ -91,7 +91,7 @@ class LlmCompletionMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
     content: Optional[str] = None
     tool_calls: Optional[list[LlmToolCall]] = None
-    metadata: LlmCompletionMetadata
+    metadata: LlmCompletionMetadata = Field(default_factory=LlmCompletionMetadata)
 
 
 LlmMessage = Union[
@@ -103,7 +103,9 @@ class LlmMultiMessageCompletion(BaseModel):
     """A completion that takes multiple messages, e.g. because of tool calls"""
 
     messages: list[LlmMessage]
-    metadata: LlmCompletionMetadata  # The combined metadata, e.g. total tokens, total duration etc
+    metadata: LlmCompletionMetadata = Field(
+        default_factory=LlmCompletionMetadata
+    )  # The combined metadata, e.g. total tokens, total duration etc
 
     @property
     def completion_messages(self) -> list[LlmCompletionMessage]:
