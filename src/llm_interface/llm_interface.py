@@ -390,16 +390,31 @@ class LLMInterface:
             # (you might want to use a more sophisticated docstring parser)
             param_doc = ""
             if f":param {param_name}:" in doc:
-                param_doc = doc.split(f":param {param_name}:")[1].split("\n")[0].strip()
+                str_from_param_doc = doc.split(f":param {param_name}:")[1]
+                param_doc = ""
+                for line in str_from_param_doc.split("\n"):
+                    if line.startswith(":") or line.strip() == "":
+                        break
+                    param_doc += line.strip() + "\n"
+                param_doc = param_doc.strip()
 
             param_schema["description"] = param_doc
             parameters["properties"][param_name] = param_schema
+
+        lines = doc.split("\n")
+        description = ""
+        for line in lines:
+            if ":param" in line or line.startswith("Args:"):
+                break
+            description += line + "\n"
+        # Remove trailing empty lines
+        description = description.rstrip()
 
         return {
             "type": "function",
             "function": {
                 "name": func.__name__,
-                "description": doc.split("\n")[0] if doc else "",
+                "description": description,
                 "parameters": parameters,
             },
         }
