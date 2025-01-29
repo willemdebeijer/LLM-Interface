@@ -327,6 +327,25 @@ async def test_function_to_tool_multiline_docstring_and_parameters():
 
 
 @pytest.mark.asyncio
+async def test_function_to_tool_args_and_kwargs():
+    """Test that we do not include args and kwargs in the tool description"""
+
+    def get_weather(city: str, *args, **kwargs) -> str:
+        """Get the current temperature for a given location
+
+        :param city: City and country e.g. Bogotá, Colombia
+        """
+        return "25 degrees Celsius"
+
+    tool = LLMInterface.function_to_tool(get_weather)
+    assert (
+        tool["function"]["parameters"]["properties"]["city"]["description"]
+        == "City and country e.g. Bogotá, Colombia"
+    )
+    assert len(tool["function"]["parameters"]["properties"].keys()) == 1
+
+
+@pytest.mark.asyncio
 async def test_get_llm_repr():
     """Test that we can get a string representation of an object that is suitable for LLM consumption"""
 

@@ -414,6 +414,10 @@ class LLMInterface:
         parameters = {"type": "object", "properties": {}, "required": []}
 
         for param_name, param in sig.parameters.items():
+            # Skip *args and **kwargs parameters
+            if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                continue
+
             param_type = type_hints.get(param_name, str)
             param_schema = cls.convert_type_to_json_schema(param_type)
 
