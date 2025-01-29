@@ -50,7 +50,15 @@ async def time_coroutine(coroutine):
 
 
 class LLMInterface:
-    """An interface for working with LLMs."""
+    """An interface for working with LLMs.
+
+    :param openai_api_key: The OpenAI API key to use. Required if no handler is provided.
+    :param handler: A custom LLM handler to use. Will override `openai_api_key`.
+    :param verbose: If True, log debug messages.
+    :param debug: If True, record all LLM calls and make them available to the viewer.
+    :param default_model: The default model to use for LLM calls.
+    :param default_temperature: The default temperature to use for LLM calls.
+    """
 
     class NotAllToolsMatchedException(Exception):
         pass
@@ -59,6 +67,8 @@ class LLMInterface:
         self,
         openai_api_key: str | None = None,
         handler: AbstractLlmHandler | None = None,
+        default_model: str | None = None,
+        default_temperature: float | None = 0.7,
         verbose=True,
         debug=False,
     ):
@@ -77,15 +87,26 @@ class LLMInterface:
             self.recorders.append(DebugRecorder())
         if verbose:
             logger.setLevel(logging.DEBUG)
+        self.default_model = default_model
+        self.default_temperature = default_temperature
 
     async def get_completion(
         self,
         messages: Sequence[Union[LlmMessage, dict[str, Any]]],
-        model: str,
-        temperature: float = 0.7,
+        model: str | None = None,
+        temperature: float | None = None,
         tools: list[Callable] | None = None,
+        request_kwargs: dict | None = None,
         **kwargs,
     ) -> LlmCompletionMessage:
+        """Call the LLM and return the completion message, including metadata
+
+        :param tools: List of Python functions that the LLM can use.
+            Will automatically be converted to a format that can be used by the LLM API.
+        :parma request_kwargs: Freeform dict that will be passed to the LLM API
+        """
+        model = model or self.default_model
+        temperature = temperature or self.default_temperature
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
         message_objs = [
             self.convert_to_llm_message_obj(message) for message in messages
@@ -98,6 +119,7 @@ class LLMInterface:
             "messages": serialized_messages,
             "model": model,
             "temperature": temperature,
+            **(request_kwargs or {}),
         }
         if tools:
             serialized_tools = [self.function_to_tool(tool) for tool in tools]
@@ -145,8 +167,19 @@ class LLMInterface:
         non_auto_execute_tools: list[Callable] = [],
         max_depth: int = 16,
         error_on_max_depth: bool = True,
+        request_kwargs: dict | None = None,
     ) -> LlmMultiMessageCompletion:
-        """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message)."""
+        """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message).
+
+        :param auto_execute_tools: List of Python functions that the LLM can use and execute automatically.
+            This can cause multiple LLM calls for a single call of this method.
+        :param non_auto_execute_tools: List of Python functions that the LLM can use but should not execute automatically.
+            If a non-auto execute tool is called, this method will return the result up to that point.
+        :param max_depth: Maximum number of LLM calls to make when calling this method once.
+        :param error_on_max_depth: If True, raise an error when the maximum depth is reached.
+            Otherwise, return the result up to that point.
+        :param request_kwargs: Freeform dict that will be passed to the LLM API, shared with all calls
+        """
         start_time = time.time()
         chat_id = str(uuid.uuid4())
         if max_depth < 1:
@@ -161,6 +194,7 @@ class LLMInterface:
                 model=model,
                 temperature=temperature,
                 tools=auto_execute_tools + non_auto_execute_tools,
+                request_kwargs=request_kwargs,
                 chat_id=chat_id,
             )
             new_messages.append(completion)
