@@ -49,6 +49,7 @@ class LLMInterface:
     :param handler: A custom LLM handler to use. Will override `openai_api_key`.
     :param verbose: If True, log debug messages.
     :param debug: If True, record all LLM calls and make them available to the viewer.
+    :param default_label: A default label for chats. This will be shown in the viewer sidebar.
     :param default_model: The default model to use for LLM calls.
     :param default_temperature: The default temperature to use for LLM calls.
     """
@@ -60,6 +61,7 @@ class LLMInterface:
         self,
         openai_api_key: str | None = None,
         handler: AbstractLlmHandler | None = None,
+        default_label: str | None = None,
         default_model: str | None = None,
         default_temperature: float | None = 0.7,
         verbose=True,
@@ -80,6 +82,7 @@ class LLMInterface:
             self.recorders.append(DebugRecorder())
         if verbose:
             logger.setLevel(logging.DEBUG)
+        self.default_label = default_label
         self.default_model = default_model
         self.default_temperature = default_temperature
         self._completion_metadata: list[LlmCompletionMetadata] = []
@@ -133,17 +136,20 @@ class LLMInterface:
         temperature: float | None = None,
         tools: list[Callable] | None = None,
         request_kwargs: dict | None = None,
+        label: str | None = None,
         **kwargs,
     ) -> LlmCompletionMessage:
         """Call the LLM and return the completion message, including metadata
 
         :param tools: List of Python functions that the LLM can use.
             Will automatically be converted to a format that can be used by the LLM API.
-        :parma request_kwargs: Freeform dict that will be passed to the LLM API
+        :param request_kwargs: Freeform dict that will be passed to the LLM API
+        :param label: A label the chat. This will be shown in the sidebar in the viewer.
         """
         model = model or self.default_model
         assert model, "Either a default model must be set or a model must be provided"
         temperature = temperature or self.default_temperature
+        label = label or self.default_label
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
         message_objs = [
             LlmConversionHelpers.convert_to_llm_message_obj(message)
@@ -183,7 +189,10 @@ class LLMInterface:
 
         for recorder in self.recorders:
             recorder.record(
-                model=model, messages=message_objs + [completion_message], **kwargs
+                model=model,
+                messages=message_objs + [completion_message],
+                label=label,
+                **kwargs,
             )
         logger.debug(
             f"OpenAI response in {completion_message.metadata.duration_seconds or 0:.2f}s "
@@ -215,6 +224,7 @@ class LLMInterface:
         max_depth: int = 16,
         error_on_max_depth: bool = True,
         request_kwargs: dict | None = None,
+        label: str | None = None,
         **kwargs,
     ) -> LlmMultiMessageCompletion:
         """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message).
@@ -227,6 +237,7 @@ class LLMInterface:
         :param error_on_max_depth: If True, raise an error when the maximum depth is reached.
             Otherwise, return the result up to that point.
         :param request_kwargs: Freeform dict that will be passed to the LLM API, shared with all calls
+        :param label: A label the chat. This will be shown in the sidebar in the viewer.
         """
         start_time = time.time()
         chat_id = str(uuid.uuid4())
@@ -246,6 +257,7 @@ class LLMInterface:
                 tools=auto_execute_tools + non_auto_execute_tools,
                 request_kwargs=request_kwargs,
                 chat_id=chat_id,
+                label=label,
                 **kwargs,
             )
             new_messages.append(completion)

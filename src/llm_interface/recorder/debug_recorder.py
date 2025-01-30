@@ -37,6 +37,7 @@ class DebugRecorder:
             "id": str(call_id),
             "timestamp": dt.isoformat(),
             "model": model,
+            "label": kwargs.get("label", None),
             "messages": [self._dump_message(msg) for msg in messages],
         }
         # If stored chat with same chat id exists then overwrite it to prevent duplicates

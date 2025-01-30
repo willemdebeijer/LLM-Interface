@@ -146,17 +146,14 @@
                 menuItem.className = 'menu-item';
                 menuItem.innerHTML = `
                     <div class="menu-item-content">
-                        <span class="chat-id">${chat.id.substring(0, 8)}</span>
+                        <span class="chat-label">${chat.label || 'Unlabeled Chat'}</span>
                         <span class="timestamp">${new Date(chat.timestamp).toLocaleString('en-CA', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
                             hour: '2-digit',
                             minute: '2-digit',
                             second: '2-digit',
                             hour12: false,
                             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                        }).replace(',', '')}</span>
+                        }).replace(',', '')} &bull; ${chat.id.substring(0, 8)}</span>
                         <span class="model-name">${chat.model}</span>
                     </div>
                 `;

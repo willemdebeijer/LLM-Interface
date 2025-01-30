@@ -100,7 +100,7 @@ h1 {
     font-family: monospace;
 }
 
-.menu-item-content .chat-id {
+.menu-item-content .chat-label {
     font-weight: 600;
     color: var(--primary-color);
 }
