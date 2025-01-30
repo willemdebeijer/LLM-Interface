@@ -107,6 +107,9 @@ h1 {
 
 /* Other */
 
+.chat-title {
+    padding-left: 16px;
+}
 
 .chat-card {
     background: var(--card-bg);
