@@ -87,9 +87,21 @@ async def test_get_completion_with_metadata(monkeypatch):
     assert result.metadata.duration_seconds or 0 > 0
     assert result.metadata.llm_model_version == "gpt-4o-v1"
     assert result.metadata.llm_model == llm_model
-    assert result.metadata.input_cost_usd or 0 > 0
-    assert result.metadata.output_cost_usd or 0 > 0
-    assert result.metadata.cost_usd or 0 > 0
+    assert (
+        result.metadata.input_cost_usd or 0 == 0.000_001
+    )  # 10 tokens * (0.1 USD / 1M tokens)
+    assert (
+        result.metadata.output_cost_usd or 0 == 0.000_005
+    )  # 5 tokens * (1.0 USD / 1M tokens)
+    assert result.metadata.cost_usd or 0 == 0.000_006  # 0.001 + 0.005
+
+    # Verify LLMInterface metadata totals
+    assert llm.total_calls == 1
+    assert llm.total_input_tokens == 10
+    assert llm.total_output_tokens == 5
+    assert llm.total_input_cost_usd == 0.000_001  # 10 tokens * (0.1 USD / 1M tokens)
+    assert llm.total_output_cost_usd == 0.000_005  # 5 tokens * (1.0 USD / 1M tokens)
+    assert llm.total_cost_usd == 0.000_006  # 0.001 + 0.005
 
 
 mock_weather_responses = [

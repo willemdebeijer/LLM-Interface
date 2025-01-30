@@ -89,6 +89,37 @@ class LLMInterface:
             logger.setLevel(logging.DEBUG)
         self.default_model = default_model
         self.default_temperature = default_temperature
+        self._completion_metadata: list[LlmCompletionMetadata] = []
+
+    @property
+    def total_calls(self) -> int:
+        """Total number of LLM API calls made"""
+        return len(self._completion_metadata)
+
+    @property
+    def total_input_tokens(self) -> int:
+        """Total number of input tokens across all calls"""
+        return sum(m.input_tokens or 0 for m in self._completion_metadata)
+
+    @property
+    def total_output_tokens(self) -> int:
+        """Total number of output tokens across all calls"""
+        return sum(m.output_tokens or 0 for m in self._completion_metadata)
+
+    @property
+    def total_input_cost_usd(self) -> float:
+        """Total cost in USD for input tokens across all calls"""
+        return sum(m.input_cost_usd or 0 for m in self._completion_metadata)
+
+    @property
+    def total_output_cost_usd(self) -> float:
+        """Total cost in USD for output tokens across all calls"""
+        return sum(m.output_cost_usd or 0 for m in self._completion_metadata)
+
+    @property
+    def total_cost_usd(self) -> float:
+        """Total cost in USD across all calls (input + output)"""
+        return self.total_input_cost_usd + self.total_output_cost_usd
 
     async def get_completion(
         self,
@@ -134,6 +165,10 @@ class LLMInterface:
             )
 
         completion_message: LlmCompletionMessage = await self.handler.call(data)
+
+        # Cache the completion metadata
+        if completion_message.metadata:
+            self._completion_metadata.append(completion_message.metadata)
 
         for recorder in self.recorders:
             recorder.record(
