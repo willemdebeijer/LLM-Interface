@@ -73,6 +73,11 @@
                                     ${message.metadata.input_tokens ?? 0} / ${message.metadata.output_tokens ?? 0} tokens
                                 </div>
                             ` : ''}
+                            ${message.metadata.end_to_end_duration_seconds ? `
+                                <div class="metadata-bottom">
+                                    ${message.metadata.end_to_end_duration_seconds.toFixed(3)}s total
+                                </div>
+                            ` : ''}
                         </span>
                     ` : ''}
                     ${message.role === 'tool' ? `

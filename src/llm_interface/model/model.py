@@ -45,6 +45,9 @@ class LlmCompletionMetadata(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     duration_seconds: float | None = None
+    end_to_end_duration_seconds: float | None = (
+        None  # Total time including preceding completions and tool calls
+    )
     llm_model_version: str | None = (
         None  # Exact checkpoint/version, generally includes release date for OpenAI and is returned by the API
     )

@@ -173,7 +173,9 @@ class LLMInterface:
                 f"Input messages:\n{self._format_for_log(serialized_messages)}"
             )
 
-        completion_message: LlmCompletionMessage = await self.handler.call(data)
+        completion_message: LlmCompletionMessage = await self.handler.call(
+            data, **kwargs
+        )
 
         # Cache the completion metadata
         if completion_message.metadata:
@@ -213,6 +215,7 @@ class LLMInterface:
         max_depth: int = 16,
         error_on_max_depth: bool = True,
         request_kwargs: dict | None = None,
+        **kwargs,
     ) -> LlmMultiMessageCompletion:
         """Get AI response including handling tool calls. Return final message and list of all new messages (including the final message).
 
@@ -231,6 +234,8 @@ class LLMInterface:
             raise ValueError("Max depth must be at least 1.")
         new_messages: list[LlmMessage] = []
         for i in range(max_depth):
+            if i != 0:
+                kwargs["_preprocessing_duration_seconds"] = time.time() - start_time
             completion: LlmCompletionMessage = await self.get_completion(
                 messages=[
                     *messages,
@@ -241,6 +246,7 @@ class LLMInterface:
                 tools=auto_execute_tools + non_auto_execute_tools,
                 request_kwargs=request_kwargs,
                 chat_id=chat_id,
+                **kwargs,
             )
             new_messages.append(completion)
             if not completion.tool_calls:

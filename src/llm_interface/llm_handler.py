@@ -33,7 +33,7 @@ class OpenAiLlmHandler(AbstractLlmHandler):
         self.base_url = base_url
         self.provider = provider
 
-    async def call(self, data: dict[str, Any]) -> LlmCompletionMessage:
+    async def call(self, data: dict[str, Any], **kwargs) -> LlmCompletionMessage:
         start_time = time.time()
 
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -67,6 +67,11 @@ class OpenAiLlmHandler(AbstractLlmHandler):
 
         end_time = time.time()
         duration = end_time - start_time
+        end_to_end_duration = None
+        if preprocessing_duration_seconds := kwargs.get(
+            "_preprocessing_duration_seconds"
+        ):
+            end_to_end_duration = duration + preprocessing_duration_seconds
         llm_model_version = safe_nested_get(result, ("model",))
         llm_model = (
             LlmModel.get_model_for_model_name(llm_model_version, provider=self.provider)
@@ -77,6 +82,7 @@ class OpenAiLlmHandler(AbstractLlmHandler):
             input_tokens=safe_nested_get(result, ("usage", "prompt_tokens")),
             output_tokens=safe_nested_get(result, ("usage", "completion_tokens")),
             duration_seconds=duration,
+            end_to_end_duration_seconds=end_to_end_duration,
             llm_model_version=llm_model_version,
             llm_model=llm_model,
         )
