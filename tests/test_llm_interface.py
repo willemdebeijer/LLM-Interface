@@ -5,9 +5,9 @@ import pytest
 from pydantic import BaseModel
 
 from llm_interface import LLMInterface
-from llm_interface.model import LlmCompletionMessage, LlmToolMessage
-from llm_interface.model.llm import LlmModel, openai
+from llm_interface.model import LlmCompletionMessage, LlmModel, LlmToolMessage
 from llm_interface.protocol import LlmRepresentable
+from llm_interface.provider import openai
 
 
 class MockResponse:
