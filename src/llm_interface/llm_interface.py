@@ -106,6 +106,7 @@ class LLMInterface:
         :parma request_kwargs: Freeform dict that will be passed to the LLM API
         """
         model = model or self.default_model
+        assert model, "Either a default model must be set or a model must be provided"
         temperature = temperature or self.default_temperature
         # First convert all messages to the Pydantic objects to make sure they're valid, then serialize
         message_objs = [
@@ -161,8 +162,8 @@ class LLMInterface:
     async def get_auto_tool_completion(
         self,
         messages: Sequence[Union[LlmMessage, dict[str, Any]]],
-        model: str,
-        temperature: float = 0.7,
+        model: str | None = None,
+        temperature: float | None = None,
         auto_execute_tools: list[Callable] = [],
         non_auto_execute_tools: list[Callable] = [],
         max_depth: int = 16,
