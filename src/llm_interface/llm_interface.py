@@ -102,12 +102,12 @@ class LLMInterface:
     @property
     def total_input_cost_usd(self) -> float:
         """Total cost in USD for input tokens across all calls"""
-        return sum(m.input_cost_usd or 0 for m in self._completion_metadata)
+        return sum(m._input_cost_usd or 0.0 for m in self._completion_metadata)
 
     @property
     def total_output_cost_usd(self) -> float:
         """Total cost in USD for output tokens across all calls"""
-        return sum(m.output_cost_usd or 0 for m in self._completion_metadata)
+        return sum(m._output_cost_usd or 0.0 for m in self._completion_metadata)
 
     @property
     def total_cost_usd(self) -> float:
