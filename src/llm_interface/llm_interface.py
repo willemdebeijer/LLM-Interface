@@ -166,6 +166,7 @@ class LLMInterface:
             "temperature": temperature,
             **(request_kwargs or {}),
         }
+        serialized_tools = None
         if tools:
             serialized_tools = [
                 LlmConversionHelpers.function_to_tool(tool) for tool in tools
