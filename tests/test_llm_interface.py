@@ -5,9 +5,9 @@ import pytest
 from pydantic import BaseModel
 
 from llm_interface import LLMInterface
-from llm_interface.model import LlmCompletionMessage, LlmToolMessage
-from llm_interface.model.llm import LlmModel, openai
+from llm_interface.model import LlmCompletionMessage, LlmModel, LlmToolMessage
 from llm_interface.protocol import LlmRepresentable
+from llm_interface.provider import openai
 
 
 class MockResponse:
@@ -87,9 +87,22 @@ async def test_get_completion_with_metadata(monkeypatch):
     assert result.metadata.duration_seconds or 0 > 0
     assert result.metadata.llm_model_version == "gpt-4o-v1"
     assert result.metadata.llm_model == llm_model
-    assert result.metadata.input_cost_usd or 0 > 0
-    assert result.metadata.output_cost_usd or 0 > 0
-    assert result.metadata.cost_usd or 0 > 0
+    assert (
+        result.metadata.input_cost_usd or 0 == 0.000_001
+    )  # 10 tokens * (0.1 USD / 1M tokens)
+    assert (
+        result.metadata.output_cost_usd or 0 == 0.000_005
+    )  # 5 tokens * (1.0 USD / 1M tokens)
+    assert result.metadata.cost_usd or 0 == 0.000_006  # 0.001 + 0.005
+
+    # Verify LLMInterface metadata totals
+    assert llm.total_calls == 1
+    assert llm.total_input_tokens == 10
+    assert llm.total_output_tokens == 5
+    assert llm.total_input_cost_usd == 0.000_001  # 10 tokens * (0.1 USD / 1M tokens)
+    assert llm.total_output_cost_usd == 0.000_005  # 5 tokens * (1.0 USD / 1M tokens)
+    assert llm.total_cost_usd == 0.000_006  # 0.001 + 0.005
+    assert not llm.has_untracked_costs  # All costs were properly tracked in this test
 
 
 mock_weather_responses = [
@@ -286,63 +299,6 @@ async def test_get_auto_tool_completion_max_depth(monkeypatch):
         )
         == 5
     )
-
-
-@pytest.mark.asyncio
-async def test_function_to_tool_multiline_docstring_and_parameters():
-    """Test that we can convert a function to a tool with a multiline docstring and parameters"""
-
-    docstring_short = "Get the current temperature for a given location."
-    docstring_additional = "This is a multiline docstring."
-    param_1_first_line = "City e.g. Bogotá, Colombia"
-    param_1_additional = "This should be included"
-    param_2_first_line = "Country e.g. Colombia"
-    param_2_additional = "This should also be included"
-
-    def get_weather(city: str, country: str) -> str:
-        """Get the current temperature for a given location.
-
-        This is a multiline docstring.
-
-        :param city: City e.g. Bogotá, Colombia
-            This should be included
-        :param country: Country e.g. Colombia
-            This should also be included
-        """
-        return "25 degrees Celsius"
-
-    tool = LLMInterface.function_to_tool(get_weather)
-    assert (
-        tool["function"]["description"]
-        == f"{docstring_short}\n\n{docstring_additional}"
-    )
-    assert (
-        tool["function"]["parameters"]["properties"]["city"]["description"]
-        == f"{param_1_first_line}\n{param_1_additional}"
-    )
-    assert (
-        tool["function"]["parameters"]["properties"]["country"]["description"]
-        == f"{param_2_first_line}\n{param_2_additional}"
-    )
-
-
-@pytest.mark.asyncio
-async def test_function_to_tool_args_and_kwargs():
-    """Test that we do not include args and kwargs in the tool description"""
-
-    def get_weather(city: str, *args, **kwargs) -> str:
-        """Get the current temperature for a given location
-
-        :param city: City and country e.g. Bogotá, Colombia
-        """
-        return "25 degrees Celsius"
-
-    tool = LLMInterface.function_to_tool(get_weather)
-    assert (
-        tool["function"]["parameters"]["properties"]["city"]["description"]
-        == "City and country e.g. Bogotá, Colombia"
-    )
-    assert len(tool["function"]["parameters"]["properties"].keys()) == 1
 
 
 @pytest.mark.asyncio

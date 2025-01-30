@@ -1,5 +1,6 @@
 # src/llm_interface/cli.py
 import json
+import math
 import os
 import threading
 import webbrowser
@@ -73,15 +74,47 @@ class LLMViewerHandler(SimpleHTTPRequestHandler):
 
     def serve_calls(self):
         try:
-            calls = []
-            for file in Path(self.debug_dir).glob("*.json"):
-                with open(file) as f:
-                    calls.append(json.load(f))
+            page = self.path.split("=")[1] if "=" in self.path else "1"
+            per_page = 250
+
+            # Get all chat files and sort by timestamp (newest first)
+            chat_files = list(Path(self.debug_dir).glob("*.json"))
+            chat_files.sort(reverse=True)
+
+            # Calculate pagination
+            total_chats = len(chat_files)
+            total_pages = math.ceil(total_chats / per_page)
+            start_idx = (int(page) - 1) * per_page
+            end_idx = start_idx + per_page
+
+            # Get paginated subset of files
+            paginated_files = chat_files[start_idx:end_idx]
+
+            chats = []
+            for file_path in paginated_files:
+                try:
+                    with open(file_path, "r") as f:
+                        chat = json.load(f)
+                        chats.append(chat)
+                except Exception as e:
+                    print(f"Error loading chat file {file_path}: {e}")
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(calls).encode())
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "chats": chats,
+                        "pagination": {
+                            "total": total_chats,
+                            "per_page": per_page,
+                            "current_page": int(page),
+                            "total_pages": total_pages,
+                        },
+                    }
+                ).encode()
+            )
         except Exception as e:
             print(f"Error serving calls: {e}")
             self.send_error(500)
@@ -103,11 +136,20 @@ def main():
         print("Start using LLMInterface with debug_mode=True first.")
         return
 
-    # Start server on a random available port
-    port = 0  # This tells the OS to pick an available port
+    # Try to use the default port first
+    default_port = 7464
     handler = create_handler(debug_dir)
-    httpd = HTTPServer(("localhost", port), handler)
-    actual_port = httpd.server_port
+
+    try:
+        httpd = HTTPServer(("localhost", default_port), handler)
+        actual_port = default_port
+        print(f"Starting server on default port {default_port}")
+    except OSError:
+        # If default port is not available, let OS choose one
+        httpd = HTTPServer(("localhost", 0), handler)
+        actual_port = httpd.server_port
+        print(f"Default port {default_port} was not available")
+        print(f"Using alternative port {actual_port}")
 
     # Start the server in a separate thread
     thread = threading.Thread(target=httpd.serve_forever)

@@ -2,6 +2,9 @@
 
 :root {
     --primary-color: #2563eb;
+    --background-color: #f8fafc;
+    --hover-color: #e8edf5;
+    --accent-color: #2563eb;
     --bg-color: #f8fafc;
     --card-bg: #ffffff;
     --border-color: #e2e8f0;
@@ -22,11 +25,15 @@ body {
 .container {
     max-width: 1000px;
     margin: 0 auto;
+    padding-bottom: 0;
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
 }
 
 h1 {
     color: var(--text-primary);
-    margin-bottom: 24px;
+    margin: 0 0 20px 0;
 }
 
 /* General */
@@ -59,16 +66,20 @@ h1 {
 .split-view {
     display: flex;
     gap: 20px;
-    height: calc(100vh - 100px);
+    flex: 1;
+    min-height: 0;
 }
 
 /* Menu */
 
 #menu-bar {
-    width: 300px;
+    width: 375px;
     overflow-y: auto;
     border-right: 1px solid #ddd;
     padding-right: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 #chat-details {
@@ -79,7 +90,7 @@ h1 {
 .menu-item {
     padding: 10px;
     border: 1px solid #ddd;
-    margin-bottom: 10px;
+    margin: 0 0 10px 0;
     border-radius: 5px;
     cursor: pointer;
 }
@@ -100,13 +111,16 @@ h1 {
     font-family: monospace;
 }
 
-.menu-item-content .chat-id {
+.menu-item-content .chat-label {
     font-weight: 600;
     color: var(--primary-color);
 }
 
 /* Other */
 
+.chat-title {
+    padding-left: 16px;
+}
 
 .chat-card {
     background: var(--card-bg);
@@ -121,7 +135,6 @@ h1 {
     padding: 16px;
     background: var(--header-bg);
     cursor: pointer;
-    user-select: none;
 }
 
 .chat-header:hover {
@@ -132,6 +145,7 @@ h1 {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 48px;
+    user-select: text;
 }
 
 .chat-details-column {
@@ -161,7 +175,6 @@ h1 {
     padding: 12px 16px;
     background: var(--header-bg);
     cursor: pointer;
-    user-select: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -179,6 +192,7 @@ h1 {
     color: var(--text-primary);
     font-family: monospace;
     line-height: 1.5;
+    overflow-wrap: break-word;
 }
 
 .role-icon {
@@ -201,12 +215,12 @@ h1 {
     background: #16a34a;
 }
 
-.role-tool .role-icon {
-    background: #7c3aed;
-}
-
 .role-system .role-icon {
     background: #ea580c;
+}
+
+.role-tool .role-icon {
+    background: #7c3aed;
 }
 
 .chevron {
@@ -225,14 +239,6 @@ h1 {
     transform: rotate(0deg);
 }
 
-.metadata {
-    font-size: 0.9em;
-    color: var(--text-secondary);
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-color);
-}
-
 .message-header-content {
     display: flex;
     justify-content: space-between;
@@ -248,14 +254,14 @@ h1 {
 
 .message-metadata {
     color: var(--text-metadata);
-    font-size: 0.9em;
+    font-size: 0.85em;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;
 }
 
-.metadata-top, .metadata-bottom {
+.metadata-top, .metadata-middle, .metadata-bottom {
     line-height: 1.2;
 }
 
@@ -279,6 +285,7 @@ h1 {
 
 .tool-name {
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .tool-id {
@@ -321,4 +328,86 @@ h1 {
 .labeled-value .label {
     justify-self: start;
     color: #666;
+}
+
+.toggle-button-container {
+    padding: 8px 16px;
+    background: var(--card-bg);
+    display: flex;
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.toggle-all-button {
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.toggle-all-button:hover {
+    background-color: #e0e0e0;
+}
+
+.date-separator {
+    padding: 24px 12px 12px 12px;
+    font-size: 1.1em;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+
+/* Pagination */
+.pagination-container {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-color);
+    padding: 10px 0px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    z-index: 1000;
+    margin: 20px -20px -20px -20px; /* Negative margin to extend to menu edges */
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.pagination button {
+    padding: 2px 4px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    cursor: pointer;
+    border-radius: 4px;
+    min-width: 28px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: var(--hover-color);
+}
+
+.pagination button.current {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination .ellipsis {
+    padding: 0 5px;
+    color: var(--text-secondary);
 }

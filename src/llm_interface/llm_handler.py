@@ -7,8 +7,14 @@ import aiohttp
 
 from llm_interface.exception import LlmException, RateLimitException
 from llm_interface.helpers import safe_nested_get
-from llm_interface.model import LlmCompletionMessage, LlmCompletionMetadata, LlmToolCall
-from llm_interface.model.llm import LlmModel, LlmProvider, openai
+from llm_interface.model import (
+    LlmCompletionMessage,
+    LlmCompletionMetadata,
+    LlmModel,
+    LlmProvider,
+    LlmToolCall,
+)
+from llm_interface.provider import openai
 
 
 class AbstractLlmHandler(ABC):
@@ -23,6 +29,11 @@ class AbstractLlmHandler(ABC):
 
 
 class OpenAiLlmHandler(AbstractLlmHandler):
+    """A handler for OpenAI LLM API calls.
+
+    Can be used with different providers that use the OpenaI API spec by providing a different base URL.
+    """
+
     def __init__(
         self,
         api_key: str,
@@ -33,12 +44,15 @@ class OpenAiLlmHandler(AbstractLlmHandler):
         self.base_url = base_url
         self.provider = provider
 
-    async def call(self, data: dict[str, Any]) -> LlmCompletionMessage:
-        start_time = time.time()
+    async def __make_api_call(self, url: str, headers: dict, data: dict) -> dict:
+        """Make the actual API call to OpenAI.
 
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        slash = "/" if not self.base_url.endswith("/") else ""
-        url = f"{self.base_url}{slash}chat/completions"
+        :param url: The API endpoint URL
+        :param headers: Request headers
+        :param data: Request data
+        :return: JSON response from the API
+        :raises: RateLimitException, LlmException
+        """
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 429:
@@ -48,7 +62,21 @@ class OpenAiLlmHandler(AbstractLlmHandler):
                     raise LlmException(
                         f"OpenAI API status code {response.status}, error: {error_text}"
                     )
-                result = await response.json()
+                return await response.json()
+
+    async def call(self, data: dict[str, Any], **kwargs) -> LlmCompletionMessage:
+        """Make an LLM API call to OpenAI.
+
+        :param data: A dict containing the LLM call data such as `messages`, `model` and `temperature`
+        :return: A LlmCompletionMessage object containing the LLM response
+        """
+        start_time = time.time()
+
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        slash = "/" if not self.base_url.endswith("/") else ""
+        url = f"{self.base_url}{slash}chat/completions"
+
+        result = await self.__make_api_call(url, headers, data)
 
         text = safe_nested_get(result, ("choices", 0, "message", "content"))
         raw_tool_calls = safe_nested_get(
@@ -67,6 +95,11 @@ class OpenAiLlmHandler(AbstractLlmHandler):
 
         end_time = time.time()
         duration = end_time - start_time
+        end_to_end_duration = None
+        if preprocessing_duration_seconds := kwargs.get(
+            "_preprocessing_duration_seconds"
+        ):
+            end_to_end_duration = duration + preprocessing_duration_seconds
         llm_model_version = safe_nested_get(result, ("model",))
         llm_model = (
             LlmModel.get_model_for_model_name(llm_model_version, provider=self.provider)
@@ -77,6 +110,7 @@ class OpenAiLlmHandler(AbstractLlmHandler):
             input_tokens=safe_nested_get(result, ("usage", "prompt_tokens")),
             output_tokens=safe_nested_get(result, ("usage", "completion_tokens")),
             duration_seconds=duration,
+            end_to_end_duration_seconds=end_to_end_duration,
             llm_model_version=llm_model_version,
             llm_model=llm_model,
         )

@@ -64,29 +64,33 @@
                     ${message.role === 'assistant' && message.metadata ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata.duration_seconds ? `${message.metadata.duration_seconds.toFixed(3)}s` : ''}
-                                ${message.metadata.duration_seconds && message.metadata.cost_usd ? '&bull;' : ''}
                                 ${message.metadata.cost_usd ? `$${message.metadata.cost_usd.toFixed(6).slice(0,4)}<span class="cost-sub-cent-decimals">${message.metadata.cost_usd.toFixed(6).slice(4)}</span>` : ''}
                             </div>
                             ${(message.metadata.input_tokens !== undefined || message.metadata.output_tokens !== undefined) ? `
-                                <div class="metadata-bottom">
+                                <div class="metadata-middle">
                                     ${message.metadata.input_tokens ?? 0} / ${message.metadata.output_tokens ?? 0} tokens
                                 </div>
                             ` : ''}
+                            <div class="metadata-bottom">
+                                ${message.metadata.duration_seconds ? `${message.metadata.duration_seconds.toFixed(3)}s` : ''}
+                                ${message.metadata.duration_seconds && message.metadata.end_to_end_duration_seconds ? '&bull;' : ''}
+                                ${message.metadata.end_to_end_duration_seconds ? `${message.metadata.end_to_end_duration_seconds.toFixed(3)}s total` : ''}
+                            </div>
                         </span>
                     ` : ''}
                     ${message.role === 'tool' ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata?.wall_time_seconds ? `${message.metadata.wall_time_seconds.toFixed(3)}s wall time` : ''}
-                                ${message.metadata?.wall_time_seconds && message.metadata?.is_async !== undefined ? '&bull;' : ''}
                                 ${message.metadata?.is_async !== undefined ? `${message.metadata.is_async ? 'asynchronous' : 'synchronous'}` : ''}
                             </div>
                             ${message.tool_call_id ? `
-                                <div class="metadata-bottom">
+                                <div class="metadata-middle">
                                     ${message.tool_call_id}
                                 </div>
                             ` : ''}
+                            <div class="metadata-bottom">
+                                ${message.metadata?.wall_time_seconds ? `Wall time: ${message.metadata.wall_time_seconds.toFixed(3)}s` : ''}
+                            </div>
                         </span>
                     ` : ''}
                 </div>
@@ -142,17 +146,14 @@
                 menuItem.className = 'menu-item';
                 menuItem.innerHTML = `
                     <div class="menu-item-content">
-                        <span class="chat-id">${chat.id.substring(0, 8)}</span>
+                        <span class="chat-label">${chat.label || 'Unlabeled Chat'}</span>
                         <span class="timestamp">${new Date(chat.timestamp).toLocaleString('en-CA', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
                             hour: '2-digit',
                             minute: '2-digit',
                             second: '2-digit',
                             hour12: false,
                             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                        }).replace(',', '')}</span>
+                        }).replace(',', '')} &bull; ${chat.id.substring(0, 8)}</span>
                         <span class="model-name">${chat.model}</span>
                     </div>
                 `;
@@ -162,6 +163,11 @@
 
             const chatDiv = document.createElement('div');
             chatDiv.className = 'chat-card';
+            
+            const title = document.createElement('h2');
+            title.className = 'chat-title';
+            title.textContent = chat.label || 'Unlabeled Chat';
+            chatDiv.appendChild(title);
             
             const header = document.createElement('div');
             header.className = 'chat-header';
@@ -208,17 +214,122 @@
                 </div>
             `;
 
-            const content = document.createElement('div');
-            content.className = 'messages-container';
-            content.style.display = 'block'; // Always show messages
-            
-            chat.messages.forEach((msg, idx) => {
-                const msgElement = createMessageElement(msg, idx);
-                msgElement.querySelector('.message-content').style.display = 'block'; // Always show message content
-                content.appendChild(msgElement);
-            });
+            // Add collapse/expand all button after the header
+            const toggleAllButton = document.createElement('button');
+            toggleAllButton.className = 'toggle-all-button';
+            toggleAllButton.textContent = 'Collapse All';
+            toggleAllButton.onclick = (e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                const messageContents = chatDiv.querySelectorAll('.message-content');
+                const messageHeaders = chatDiv.querySelectorAll('.message-header');
+                // Check if ANY messages are visible instead of ALL being collapsed
+                const anyVisible = Array.from(messageContents).some(content => 
+                    content.style.display === 'block'
+                );
+                
+                messageContents.forEach(content => {
+                    content.style.display = anyVisible ? 'none' : 'block';
+                });
+                messageHeaders.forEach(header => {
+                    header.classList.toggle('expanded', !anyVisible);
+                });
+                toggleAllButton.textContent = anyVisible ? 'Expand All' : 'Collapse All';
+            };
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'toggle-button-container';
+            buttonContainer.appendChild(toggleAllButton);
             
             chatDiv.appendChild(header);
+            chatDiv.appendChild(buttonContainer);
+            
+            const content = document.createElement('div');
+            content.className = 'messages-container';
+            content.style.display = 'block';
+            
+            // Add available tools message if they exist
+            if (chat.available_tools && chat.available_tools.length > 0) {
+                const toolsMsg = document.createElement('div');
+                toolsMsg.className = 'message role-system';
+                
+                const toolsHeader = document.createElement('div');
+                toolsHeader.className = 'message-header expanded';
+                
+                const roleIcon = document.createElement('div');
+                roleIcon.className = 'role-icon';
+                roleIcon.textContent = 'S';
+
+                const chevron = document.createElement('span');
+                chevron.className = 'chevron';
+                chevron.innerHTML = '&#x25BE;';
+
+                toolsHeader.innerHTML = `
+                    ${chevron.outerHTML}
+                    <div class="message-header-content">
+                        <div class="role-info">
+                            ${roleIcon.outerHTML}
+                            <span class="role-name">System (Available Tools)</span>
+                        </div>
+                    </div>
+                `;
+                
+                const toolsContent = document.createElement('div');
+                toolsContent.className = 'message-content';
+                toolsContent.style.display = 'block';
+                
+                const toolCallsContainer = document.createElement('div');
+                toolCallsContainer.className = 'tool-calls-container';
+                
+                chat.available_tools.forEach(tool => {
+                    const toolCallDiv = document.createElement('div');
+                    toolCallDiv.className = 'tool-call role-tool';
+                    
+                    const toolHeader = document.createElement('div');
+                    toolHeader.className = 'tool-header';
+                    toolHeader.innerHTML = `
+                        <div class="role-icon">T</div>
+                        <span class="tool-name">\`${tool.function.name}\`</span>
+                    `;
+                    
+                    const toolArgs = document.createElement('pre');
+                    toolArgs.className = 'tool-arguments';
+                    toolArgs.textContent = JSON.stringify(tool, null, 2);
+                    
+                    toolCallDiv.appendChild(toolHeader);
+                    toolCallDiv.appendChild(toolArgs);
+                    toolCallsContainer.appendChild(toolCallDiv);
+                });
+                
+                toolsContent.appendChild(toolCallsContainer);
+                toolsHeader.onclick = () => toggleElement(toolsContent);
+                
+                toolsMsg.appendChild(toolsHeader);
+                toolsMsg.appendChild(toolsContent);
+                content.appendChild(toolsMsg);
+            }
+            
+            // Add regular messages
+            chat.messages.forEach((msg, idx) => {
+                const msgElement = createMessageElement(msg, idx);
+                msgElement.querySelector('.message-content').style.display = 'block';
+                content.appendChild(msgElement);
+            });
+
+            // Move observer setup here, after content is created
+            const observer = new MutationObserver(() => {
+                const messageContents = chatDiv.querySelectorAll('.message-content');
+                const anyVisible = Array.from(messageContents).some(content => 
+                    content.style.display === 'block'
+                );
+                toggleAllButton.textContent = anyVisible ? 'Collapse All' : 'Expand All';
+            });
+
+            observer.observe(content, {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style']
+            });
+            
             chatDiv.appendChild(content);
             return chatDiv;
         }
@@ -233,7 +344,7 @@
                 item.classList.remove('selected');
             });
             const menuItems = document.querySelectorAll('.menu-item');
-            const index = chats.findIndex(c => c.timestamp === chat.timestamp);
+            const index = chats.findIndex(c => c.timestamp === chat.timestamp && c.id === chat.id);
             if (index >= 0) {
                 menuItems[index].classList.add('selected');
             }
@@ -241,26 +352,148 @@
 
         let chats = []; // Store chats globally
 
-        async function loadChats() {
+        function createPagination(pagination) {
+            const paginationDiv = document.createElement('div');
+            paginationDiv.className = 'pagination';
+            
+            const { current_page, total_pages } = pagination;
+            
+            // Previous button with better arrow
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&larr;';
+            prevButton.disabled = current_page === 1;
+            prevButton.onclick = () => loadChats(current_page - 1);
+            paginationDiv.appendChild(prevButton);
+            
+            // Page numbers
+            let startPage = Math.max(1, current_page - 2);
+            let endPage = Math.min(total_pages, startPage + 4);
+            
+            // Adjust start if we're near the end
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            if (startPage > 1) {
+                const firstPage = document.createElement('button');
+                firstPage.textContent = '1';
+                firstPage.onclick = () => loadChats(1);
+                paginationDiv.appendChild(firstPage);
+                
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'ellipsis';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = i === current_page ? 'current' : '';
+                pageButton.onclick = () => loadChats(i);
+                paginationDiv.appendChild(pageButton);
+            }
+            
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'ellipsis';
+                    paginationDiv.appendChild(ellipsis);
+                }
+                
+                const lastPage = document.createElement('button');
+                lastPage.textContent = total_pages;
+                lastPage.onclick = () => loadChats(total_pages);
+                paginationDiv.appendChild(lastPage);
+            }
+            
+            // Next button with better arrow
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '&rarr;';
+            nextButton.disabled = current_page === total_pages;
+            nextButton.onclick = () => loadChats(current_page + 1);
+            paginationDiv.appendChild(nextButton);
+            
+            return paginationDiv;
+        }
+
+        async function loadChats(page = 1) {
             const menuBar = document.getElementById('menu-bar');
             const chatDetails = document.getElementById('chat-details');
             menuBar.innerHTML = '<div class="loading">Loading chats...</div>';
             chatDetails.innerHTML = '';
             
+            // Remove existing pagination container if it exists
+            const existingPagination = document.querySelector('.pagination-container');
+            if (existingPagination) {
+                existingPagination.remove();
+            }
+            
             try {
-                const response = await fetch('/api/chats');
-                chats = await response.json();
+                const response = await fetch(`/api/chats?page=${page}`);
+                const data = await response.json();
                 
-                // Sort by timestamp, newest first
-                chats.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                if (!data || !data.chats) {
+                    throw new Error('Invalid response format from server');
+                }
                 
+                chats = data.chats;
                 menuBar.innerHTML = '';
-                chats.forEach(chat => {
-                    menuBar.appendChild(createChatElement(chat, true));
+                
+                if (chats.length === 0) {
+                    menuBar.innerHTML = '<div class="loading">No chats found</div>';
+                    return;
+                }
+                
+                // Group chats by date
+                const chatsByDate = chats.reduce((groups, chat) => {
+                    if (!chat || !chat.timestamp) {
+                        console.warn('Invalid chat object:', chat);
+                        return groups;
+                    }
+                    
+                    const date = new Date(chat.timestamp).toLocaleDateString('en-CA', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    if (!groups[date]) {
+                        groups[date] = [];
+                    }
+                    groups[date].push(chat);
+                    return groups;
+                }, {});
+                
+                // Create menu items with date separators
+                Object.entries(chatsByDate).forEach(([date, dateChats]) => {
+                    const dateHeader = document.createElement('div');
+                    dateHeader.className = 'date-separator';
+                    dateHeader.textContent = new Date(date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    menuBar.appendChild(dateHeader);
+                    
+                    dateChats.forEach(chat => {
+                        menuBar.appendChild(createChatElement(chat, true));
+                    });
                 });
-
-                // Show first chat by default
-                if (chats.length > 0) {
+                
+                // Create and append pagination
+                if (data.pagination) {
+                    const paginationContainer = document.createElement('div');
+                    paginationContainer.className = 'pagination-container';
+                    paginationContainer.appendChild(createPagination(data.pagination));
+                    menuBar.appendChild(paginationContainer);
+                }
+                
+                // Show first chat by default if we're on the first page
+                if (chats.length > 0 && page === 1) {
                     showChatDetails(chats[0]);
                 }
             } catch (error) {

@@ -17,9 +17,10 @@ class LlmProvider(BaseModel):
     def get_all(cls) -> list["LlmProvider"]:
         return cls._all
 
-
-openai = LlmProvider(name="OpenAI")
-groq = LlmProvider(name="Groq")
+    @property
+    def llm_models(self) -> list["LlmModel"]:
+        """Get all registered LLMs for this provider."""
+        return LlmModel.get_all_for_provider(self)
 
 
 class LlmModel(BaseModel):
@@ -45,7 +46,7 @@ class LlmModel(BaseModel):
         self.__class__._all.append(self)
 
     @classmethod
-    def get_all_all(cls) -> list["LlmModel"]:
+    def get_all(cls) -> list["LlmModel"]:
         return cls._all
 
     @classmethod
@@ -59,34 +60,6 @@ class LlmModel(BaseModel):
                 return family
         return None
 
-
-# OpenAI models
-gpt_4o = LlmModel(
-    name="gpt-4o",
-    provider=openai,
-    usd_per_1m_input_tokens=2.5,
-    usd_per_1m_output_tokens=10,
-)
-gpt_4o_mini = LlmModel(
-    name="gpt-4o-mini",
-    provider=openai,
-    usd_per_1m_input_tokens=0.15,
-    usd_per_1m_output_tokens=0.6,
-)
-o1 = LlmModel(
-    name="o1", provider=openai, usd_per_1m_input_tokens=15, usd_per_1m_output_tokens=60
-)
-o1_mini = LlmModel(
-    name="o1-mini",
-    provider=openai,
-    usd_per_1m_input_tokens=3,
-    usd_per_1m_output_tokens=12,
-)
-
-# Groq models
-groq_llama_3_3_70b_specdec_8k = LlmModel(
-    name="llama-3.3-70b-specdec",
-    provider=groq,
-    usd_per_1m_input_tokens=0.59,
-    usd_per_1m_output_tokens=0.99,
-)
+    @classmethod
+    def get_all_for_provider(cls, provider: LlmProvider) -> list["LlmModel"]:
+        return [model for model in cls._all if model.provider == provider]
