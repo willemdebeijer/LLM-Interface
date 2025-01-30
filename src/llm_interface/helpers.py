@@ -22,12 +22,13 @@ from llm_interface.model import (
 
 def safe_nested_get(data, keys) -> Any | None:
     """Get a nested value from a dictionary/list safely."""
+    next_result: Any = data
     for key in keys:
         try:
-            data: Any = data[key]
+            next_result: Any = next_result[key]
         except (KeyError, IndexError, TypeError):
             return None
-    return data
+    return next_result
 
 
 class LlmConversionHelpers:
