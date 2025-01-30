@@ -322,3 +322,24 @@ h1 {
     justify-self: start;
     color: #666;
 }
+
+.toggle-button-container {
+    padding: 8px 16px;
+    background: var(--card-bg);
+    display: flex;
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.toggle-all-button {
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.toggle-all-button:hover {
+    background-color: #e0e0e0;
+}

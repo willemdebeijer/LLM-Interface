@@ -208,6 +208,35 @@
                 </div>
             `;
 
+            // Add collapse/expand all button after the header
+            const toggleAllButton = document.createElement('button');
+            toggleAllButton.className = 'toggle-all-button';
+            toggleAllButton.textContent = 'Collapse All';
+            toggleAllButton.onclick = (e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                const messageContents = chatDiv.querySelectorAll('.message-content');
+                const messageHeaders = chatDiv.querySelectorAll('.message-header');
+                // Check if ANY messages are visible instead of ALL being collapsed
+                const anyVisible = Array.from(messageContents).some(content => 
+                    content.style.display === 'block'
+                );
+                
+                messageContents.forEach(content => {
+                    content.style.display = anyVisible ? 'none' : 'block';
+                });
+                messageHeaders.forEach(header => {
+                    header.classList.toggle('expanded', !anyVisible);
+                });
+                toggleAllButton.textContent = anyVisible ? 'Expand All' : 'Collapse All';
+            };
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'toggle-button-container';
+            buttonContainer.appendChild(toggleAllButton);
+            
+            chatDiv.appendChild(header);
+            chatDiv.appendChild(buttonContainer);
+            
             const content = document.createElement('div');
             content.className = 'messages-container';
             content.style.display = 'block'; // Always show messages
@@ -217,8 +246,22 @@
                 msgElement.querySelector('.message-content').style.display = 'block'; // Always show message content
                 content.appendChild(msgElement);
             });
+
+            // Move observer setup here, after content is created
+            const observer = new MutationObserver(() => {
+                const messageContents = chatDiv.querySelectorAll('.message-content');
+                const anyVisible = Array.from(messageContents).some(content => 
+                    content.style.display === 'block'
+                );
+                toggleAllButton.textContent = anyVisible ? 'Collapse All' : 'Expand All';
+            });
+
+            observer.observe(content, {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style']
+            });
             
-            chatDiv.appendChild(header);
             chatDiv.appendChild(content);
             return chatDiv;
         }
