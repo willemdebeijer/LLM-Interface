@@ -282,7 +282,7 @@
                 item.classList.remove('selected');
             });
             const menuItems = document.querySelectorAll('.menu-item');
-            const index = chats.findIndex(c => c.timestamp === chat.timestamp);
+            const index = chats.findIndex(c => c.timestamp === chat.timestamp && c.id === chat.id);
             if (index >= 0) {
                 menuItems[index].classList.add('selected');
             }
