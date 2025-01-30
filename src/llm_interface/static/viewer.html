@@ -290,23 +290,109 @@
 
         let chats = []; // Store chats globally
 
-        async function loadChats() {
+        function createPagination(pagination) {
+            const paginationDiv = document.createElement('div');
+            paginationDiv.className = 'pagination';
+            
+            const { current_page, total_pages } = pagination;
+            
+            // Previous button with better arrow
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&larr;';
+            prevButton.disabled = current_page === 1;
+            prevButton.onclick = () => loadChats(current_page - 1);
+            paginationDiv.appendChild(prevButton);
+            
+            // Page numbers
+            let startPage = Math.max(1, current_page - 2);
+            let endPage = Math.min(total_pages, startPage + 4);
+            
+            // Adjust start if we're near the end
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            if (startPage > 1) {
+                const firstPage = document.createElement('button');
+                firstPage.textContent = '1';
+                firstPage.onclick = () => loadChats(1);
+                paginationDiv.appendChild(firstPage);
+                
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'ellipsis';
+                    paginationDiv.appendChild(ellipsis);
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = i === current_page ? 'current' : '';
+                pageButton.onclick = () => loadChats(i);
+                paginationDiv.appendChild(pageButton);
+            }
+            
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'ellipsis';
+                    paginationDiv.appendChild(ellipsis);
+                }
+                
+                const lastPage = document.createElement('button');
+                lastPage.textContent = total_pages;
+                lastPage.onclick = () => loadChats(total_pages);
+                paginationDiv.appendChild(lastPage);
+            }
+            
+            // Next button with better arrow
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '&rarr;';
+            nextButton.disabled = current_page === total_pages;
+            nextButton.onclick = () => loadChats(current_page + 1);
+            paginationDiv.appendChild(nextButton);
+            
+            return paginationDiv;
+        }
+
+        async function loadChats(page = 1) {
             const menuBar = document.getElementById('menu-bar');
             const chatDetails = document.getElementById('chat-details');
             menuBar.innerHTML = '<div class="loading">Loading chats...</div>';
             chatDetails.innerHTML = '';
             
+            // Remove existing pagination container if it exists
+            const existingPagination = document.querySelector('.pagination-container');
+            if (existingPagination) {
+                existingPagination.remove();
+            }
+            
             try {
-                const response = await fetch('/api/chats');
-                chats = await response.json();
+                const response = await fetch(`/api/chats?page=${page}`);
+                const data = await response.json();
                 
-                // Sort by timestamp, newest first
-                chats.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                if (!data || !data.chats) {
+                    throw new Error('Invalid response format from server');
+                }
                 
+                chats = data.chats;
                 menuBar.innerHTML = '';
-
+                
+                if (chats.length === 0) {
+                    menuBar.innerHTML = '<div class="loading">No chats found</div>';
+                    return;
+                }
+                
                 // Group chats by date
                 const chatsByDate = chats.reduce((groups, chat) => {
+                    if (!chat || !chat.timestamp) {
+                        console.warn('Invalid chat object:', chat);
+                        return groups;
+                    }
+                    
                     const date = new Date(chat.timestamp).toLocaleDateString('en-CA', {
                         year: 'numeric',
                         month: '2-digit',
@@ -318,7 +404,7 @@
                     groups[date].push(chat);
                     return groups;
                 }, {});
-
+                
                 // Create menu items with date separators
                 Object.entries(chatsByDate).forEach(([date, dateChats]) => {
                     const dateHeader = document.createElement('div');
@@ -330,14 +416,22 @@
                         day: 'numeric'
                     });
                     menuBar.appendChild(dateHeader);
-
+                    
                     dateChats.forEach(chat => {
                         menuBar.appendChild(createChatElement(chat, true));
                     });
                 });
-
-                // Show first chat by default
-                if (chats.length > 0) {
+                
+                // Create and append pagination
+                if (data.pagination) {
+                    const paginationContainer = document.createElement('div');
+                    paginationContainer.className = 'pagination-container';
+                    paginationContainer.appendChild(createPagination(data.pagination));
+                    menuBar.appendChild(paginationContainer);
+                }
+                
+                // Show first chat by default if we're on the first page
+                if (chats.length > 0 && page === 1) {
                     showChatDetails(chats[0]);
                 }
             } catch (error) {

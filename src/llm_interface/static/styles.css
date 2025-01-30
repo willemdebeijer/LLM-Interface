@@ -2,6 +2,9 @@
 
 :root {
     --primary-color: #2563eb;
+    --background-color: #f8fafc;
+    --hover-color: #e8edf5;
+    --accent-color: #2563eb;
     --bg-color: #f8fafc;
     --card-bg: #ffffff;
     --border-color: #e2e8f0;
@@ -22,6 +25,7 @@ body {
 .container {
     max-width: 1000px;
     margin: 0 auto;
+    padding-bottom: 0;
 }
 
 h1 {
@@ -65,10 +69,13 @@ h1 {
 /* Menu */
 
 #menu-bar {
-    width: 300px;
+    width: 375px;
     overflow-y: auto;
     border-right: 1px solid #ddd;
     padding-right: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 #chat-details {
@@ -345,4 +352,58 @@ h1 {
     font-size: 1.1em;
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+
+/* Pagination */
+.pagination-container {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-color);
+    padding: 10px 0px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    z-index: 1000;
+    margin: 20px -20px -20px -20px; /* Negative margin to extend to menu edges */
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.pagination button {
+    padding: 2px 4px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    cursor: pointer;
+    border-radius: 4px;
+    min-width: 28px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: var(--hover-color);
+}
+
+.pagination button.current {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination .ellipsis {
+    padding: 0 5px;
+    color: var(--text-secondary);
 }
