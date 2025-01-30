@@ -121,6 +121,18 @@ class LLMInterface:
         """Total cost in USD across all calls (input + output)"""
         return self.total_input_cost_usd + self.total_output_cost_usd
 
+    @property
+    def has_untracked_costs(self) -> bool:
+        """Indicates if there are any completions where costs could not be tracked.
+        
+        This can happen if the model information is missing or if the cost calculation failed.
+        When this is True, the total cost values might be incomplete.
+        """
+        return any(
+            m.input_cost_usd is None or m.output_cost_usd is None
+            for m in self._completion_metadata
+        )
+
     async def get_completion(
         self,
         messages: Sequence[Union[LlmMessage, dict[str, Any]]],

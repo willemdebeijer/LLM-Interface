@@ -102,6 +102,7 @@ async def test_get_completion_with_metadata(monkeypatch):
     assert llm.total_input_cost_usd == 0.000_001  # 10 tokens * (0.1 USD / 1M tokens)
     assert llm.total_output_cost_usd == 0.000_005  # 5 tokens * (1.0 USD / 1M tokens)
     assert llm.total_cost_usd == 0.000_006  # 0.001 + 0.005
+    assert not llm.has_untracked_costs  # All costs were properly tracked in this test
 
 
 mock_weather_responses = [
