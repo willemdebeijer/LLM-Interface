@@ -179,6 +179,7 @@ h1 {
     color: var(--text-primary);
     font-family: monospace;
     line-height: 1.5;
+    overflow-wrap: break-word;
 }
 
 .role-icon {
