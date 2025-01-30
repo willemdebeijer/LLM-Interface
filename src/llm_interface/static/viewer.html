@@ -81,15 +81,16 @@
                     ${message.role === 'tool' ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata?.wall_time_seconds ? `${message.metadata.wall_time_seconds.toFixed(3)}s wall time` : ''}
-                                ${message.metadata?.wall_time_seconds && message.metadata?.is_async !== undefined ? '&bull;' : ''}
                                 ${message.metadata?.is_async !== undefined ? `${message.metadata.is_async ? 'asynchronous' : 'synchronous'}` : ''}
                             </div>
                             ${message.tool_call_id ? `
-                                <div class="metadata-bottom">
+                                <div class="metadata-middle">
                                     ${message.tool_call_id}
                                 </div>
                             ` : ''}
+                            <div class="metadata-bottom">
+                                ${message.metadata?.wall_time_seconds ? `Wall time: ${message.metadata.wall_time_seconds.toFixed(3)}s` : ''}
+                            </div>
                         </span>
                     ` : ''}
                 </div>
