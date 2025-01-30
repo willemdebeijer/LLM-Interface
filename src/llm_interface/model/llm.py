@@ -17,6 +17,10 @@ class LlmProvider(BaseModel):
     def get_all(cls) -> list["LlmProvider"]:
         return cls._all
 
+    @property
+    def models(self) -> list["LlmModel"]:
+        return LlmModel.get_all_for_provider(self)
+
 
 openai = LlmProvider(name="OpenAI")
 groq = LlmProvider(name="Groq")
@@ -45,7 +49,7 @@ class LlmModel(BaseModel):
         self.__class__._all.append(self)
 
     @classmethod
-    def get_all_all(cls) -> list["LlmModel"]:
+    def get_all(cls) -> list["LlmModel"]:
         return cls._all
 
     @classmethod
@@ -58,6 +62,10 @@ class LlmModel(BaseModel):
             if model_name.startswith(family.name):
                 return family
         return None
+
+    @classmethod
+    def get_all_for_provider(cls, provider: LlmProvider) -> list["LlmModel"]:
+        return [model for model in cls._all if model.provider == provider]
 
 
 # OpenAI models
