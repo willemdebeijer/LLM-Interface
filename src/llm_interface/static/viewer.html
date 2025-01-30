@@ -298,8 +298,36 @@
                 chats.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 menuBar.innerHTML = '';
-                chats.forEach(chat => {
-                    menuBar.appendChild(createChatElement(chat, true));
+
+                // Group chats by date
+                const chatsByDate = chats.reduce((groups, chat) => {
+                    const date = new Date(chat.timestamp).toLocaleDateString('en-CA', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    if (!groups[date]) {
+                        groups[date] = [];
+                    }
+                    groups[date].push(chat);
+                    return groups;
+                }, {});
+
+                // Create menu items with date separators
+                Object.entries(chatsByDate).forEach(([date, dateChats]) => {
+                    const dateHeader = document.createElement('div');
+                    dateHeader.className = 'date-separator';
+                    dateHeader.textContent = new Date(date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    menuBar.appendChild(dateHeader);
+
+                    dateChats.forEach(chat => {
+                        menuBar.appendChild(createChatElement(chat, true));
+                    });
                 });
 
                 // Show first chat by default
