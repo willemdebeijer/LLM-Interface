@@ -4,7 +4,6 @@ from enum import Enum
 from typing import (
     Any,
     Callable,
-    Iterable,
     List,
     Literal,
     get_args,
