@@ -135,7 +135,6 @@ h1 {
     padding: 16px;
     background: var(--header-bg);
     cursor: pointer;
-    user-select: none;
 }
 
 .chat-header:hover {
@@ -146,6 +145,7 @@ h1 {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 48px;
+    user-select: text;
 }
 
 .chat-details-column {
@@ -175,7 +175,6 @@ h1 {
     padding: 12px 16px;
     background: var(--header-bg);
     cursor: pointer;
-    user-select: none;
     display: flex;
     align-items: center;
     gap: 8px;
