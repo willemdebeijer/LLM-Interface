@@ -256,7 +256,7 @@ h1 {
     gap: 2px;
 }
 
-.metadata-top, .metadata-bottom {
+.metadata-top, .metadata-middle, .metadata-bottom {
     line-height: 1.2;
 }
 

@@ -64,20 +64,18 @@
                     ${message.role === 'assistant' && message.metadata ? `
                         <span class="message-metadata">
                             <div class="metadata-top">
-                                ${message.metadata.duration_seconds ? `${message.metadata.duration_seconds.toFixed(3)}s` : ''}
-                                ${message.metadata.duration_seconds && message.metadata.cost_usd ? '&bull;' : ''}
                                 ${message.metadata.cost_usd ? `$${message.metadata.cost_usd.toFixed(6).slice(0,4)}<span class="cost-sub-cent-decimals">${message.metadata.cost_usd.toFixed(6).slice(4)}</span>` : ''}
                             </div>
                             ${(message.metadata.input_tokens !== undefined || message.metadata.output_tokens !== undefined) ? `
-                                <div class="metadata-bottom">
+                                <div class="metadata-middle">
                                     ${message.metadata.input_tokens ?? 0} / ${message.metadata.output_tokens ?? 0} tokens
                                 </div>
                             ` : ''}
-                            ${message.metadata.end_to_end_duration_seconds ? `
-                                <div class="metadata-bottom">
-                                    ${message.metadata.end_to_end_duration_seconds.toFixed(3)}s total
-                                </div>
-                            ` : ''}
+                            <div class="metadata-bottom">
+                                ${message.metadata.duration_seconds ? `${message.metadata.duration_seconds.toFixed(3)}s` : ''}
+                                ${message.metadata.duration_seconds && message.metadata.end_to_end_duration_seconds ? '&bull;' : ''}
+                                ${message.metadata.end_to_end_duration_seconds ? `${message.metadata.end_to_end_duration_seconds.toFixed(3)}s total` : ''}
+                            </div>
                         </span>
                     ` : ''}
                     ${message.role === 'tool' ? `
