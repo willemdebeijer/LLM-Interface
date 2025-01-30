@@ -192,6 +192,7 @@ class LLMInterface:
                 model=model,
                 messages=message_objs + [completion_message],
                 label=label,
+                serialized_tools=serialized_tools,
                 **kwargs,
             )
         logger.debug(

@@ -245,11 +245,73 @@
             
             const content = document.createElement('div');
             content.className = 'messages-container';
-            content.style.display = 'block'; // Always show messages
+            content.style.display = 'block';
             
+            // Add available tools message if they exist
+            if (chat.available_tools && chat.available_tools.length > 0) {
+                const toolsMsg = document.createElement('div');
+                toolsMsg.className = 'message role-system';
+                
+                const toolsHeader = document.createElement('div');
+                toolsHeader.className = 'message-header expanded';
+                
+                const roleIcon = document.createElement('div');
+                roleIcon.className = 'role-icon';
+                roleIcon.textContent = 'S';
+
+                const chevron = document.createElement('span');
+                chevron.className = 'chevron';
+                chevron.innerHTML = '&#x25BE;';
+
+                toolsHeader.innerHTML = `
+                    ${chevron.outerHTML}
+                    <div class="message-header-content">
+                        <div class="role-info">
+                            ${roleIcon.outerHTML}
+                            <span class="role-name">System (Available Tools)</span>
+                        </div>
+                    </div>
+                `;
+                
+                const toolsContent = document.createElement('div');
+                toolsContent.className = 'message-content';
+                toolsContent.style.display = 'block';
+                
+                const toolCallsContainer = document.createElement('div');
+                toolCallsContainer.className = 'tool-calls-container';
+                
+                chat.available_tools.forEach(tool => {
+                    const toolCallDiv = document.createElement('div');
+                    toolCallDiv.className = 'tool-call role-tool';
+                    
+                    const toolHeader = document.createElement('div');
+                    toolHeader.className = 'tool-header';
+                    toolHeader.innerHTML = `
+                        <div class="role-icon">T</div>
+                        <span class="tool-name">\`${tool.function.name}\`</span>
+                    `;
+                    
+                    const toolArgs = document.createElement('pre');
+                    toolArgs.className = 'tool-arguments';
+                    toolArgs.textContent = JSON.stringify(tool, null, 2);
+                    
+                    toolCallDiv.appendChild(toolHeader);
+                    toolCallDiv.appendChild(toolArgs);
+                    toolCallsContainer.appendChild(toolCallDiv);
+                });
+                
+                toolsContent.appendChild(toolCallsContainer);
+                toolsHeader.onclick = () => toggleElement(toolsContent);
+                
+                toolsMsg.appendChild(toolsHeader);
+                toolsMsg.appendChild(toolsContent);
+                content.appendChild(toolsMsg);
+            }
+            
+            // Add regular messages
             chat.messages.forEach((msg, idx) => {
                 const msgElement = createMessageElement(msg, idx);
-                msgElement.querySelector('.message-content').style.display = 'block'; // Always show message content
+                msgElement.querySelector('.message-content').style.display = 'block';
                 content.appendChild(msgElement);
             });
 

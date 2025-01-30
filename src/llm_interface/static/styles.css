@@ -215,12 +215,12 @@ h1 {
     background: #16a34a;
 }
 
-.role-tool .role-icon {
-    background: #7c3aed;
-}
-
 .role-system .role-icon {
     background: #ea580c;
+}
+
+.role-tool .role-icon {
+    background: #7c3aed;
 }
 
 .chevron {
@@ -285,6 +285,7 @@ h1 {
 
 .tool-name {
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .tool-id {
