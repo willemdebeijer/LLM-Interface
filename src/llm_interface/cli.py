@@ -136,11 +136,20 @@ def main():
         print("Start using LLMInterface with debug_mode=True first.")
         return
 
-    # Start server on a random available port
-    port = 0  # This tells the OS to pick an available port
+    # Try to use the default port first
+    default_port = 7464
     handler = create_handler(debug_dir)
-    httpd = HTTPServer(("localhost", port), handler)
-    actual_port = httpd.server_port
+
+    try:
+        httpd = HTTPServer(("localhost", default_port), handler)
+        actual_port = default_port
+        print(f"Starting server on default port {default_port}")
+    except OSError:
+        # If default port is not available, let OS choose one
+        httpd = HTTPServer(("localhost", 0), handler)
+        actual_port = httpd.server_port
+        print(f"Default port {default_port} was not available")
+        print(f"Using alternative port {actual_port}")
 
     # Start the server in a separate thread
     thread = threading.Thread(target=httpd.serve_forever)
