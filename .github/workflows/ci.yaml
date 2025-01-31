@@ -12,6 +12,12 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
+        dependencies: ["minimum", "latest"]
+        include:
+          - dependencies: "minimum"
+            deps_spec: "pydantic==2.0.0 aiohttp==3.9.0"
+          - dependencies: "latest"
+            deps_spec: "pydantic>=2.0 aiohttp>=3.9"
 
     steps:
     - uses: actions/checkout@v4
@@ -23,6 +29,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        pip install ${{ matrix.deps_spec }}
         pip install -e ".[dev]"
 
     - name: Run tests
