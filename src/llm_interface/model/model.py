@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -6,12 +6,12 @@ from llm_interface.model.llm import LlmModel
 
 
 class LlmSystemMessage(BaseModel):
-    role: Literal["system"] = "system"
+    role: str = "system"
     content: str
 
 
 class LlmUserMessage(BaseModel):
-    role: Literal["user"] = "user"
+    role: str = "user"
     content: str
 
 
@@ -23,7 +23,7 @@ class LlmToolMessageMetadata(BaseModel):
 
 
 class LlmToolMessage(BaseModel):
-    role: Literal["tool"] = "tool"
+    role: str = "tool"
     content: str
     tool_call_id: str
     raw_content: (
@@ -91,7 +91,7 @@ class LlmCompletionMetadata(BaseModel):
 
 
 class LlmCompletionMessage(BaseModel):
-    role: Literal["assistant"] = "assistant"
+    role: str = "assistant"
     content: Optional[str] = None
     tool_calls: Optional[list[LlmToolCall]] = None
     metadata: LlmCompletionMetadata = Field(default_factory=LlmCompletionMetadata)
