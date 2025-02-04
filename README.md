@@ -1,6 +1,8 @@
 # LLM Interface
 
-LLMs are awesome but working with them can be tricky. There are a lot of complex frameworks and packages that hide the complexity but obfuscate certain features or make it hard to adapt to the quickly changing advancements in AI.
+_The minimal dependency, maximal power way to call LLMs._
+
+As simple as the `Python OpenAI` package but as powerful as overly complicated packages. Build and debug LLM applications such as AI Agents with Python function -> tool call conversion, a web interface for debugging, automated cost and usage tracking and more.
 
 This is a simple interface to handle the basics. It's very hackable and only depends on `pydantic` and `aiohttp`.
 
