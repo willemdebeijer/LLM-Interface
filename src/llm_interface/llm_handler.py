@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from abc import ABC, abstractmethod
 from typing import Any
@@ -71,6 +72,14 @@ class OpenAiLlmHandler(AbstractLlmHandler):
         :return: A LlmCompletionMessage object containing the LLM response
         """
         start_time = time.time()
+
+        # O1 system prompt requires role 'developer', search for "o" + digit in model name
+        is_o_model = "model" in data and bool(re.search(r"o\d", data["model"]))
+        if is_o_model and data["messages"][0]["role"] != "developer":
+            data["messages"][0]["role"] = "developer"
+        # Temperature is not supported for O models
+        if is_o_model and "temperature" in data:
+            del data["temperature"]
 
         headers = {"Authorization": f"Bearer {self.api_key}"}
         slash = "/" if not self.base_url.endswith("/") else ""
