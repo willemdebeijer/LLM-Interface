@@ -338,6 +338,8 @@ To add a custom LLM that doesn't use the OpenAI spec, create a subclass of `Abst
 
 Run tests by running `pytest` in the root of the project.
 
+Run `pytest --run-api` will test the LLMInterface functionality with the live OpenAI API. Note that this requires a `.env` with `OPENAI_API_KEY` and will use up actual API credtis to run.
+
 ## Links
 
 [My personal website](https://www.willemdebeijer.com)
