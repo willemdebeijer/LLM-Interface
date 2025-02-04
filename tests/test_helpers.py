@@ -39,3 +39,22 @@ async def test_function_to_tool_multiline_docstring_and_parameters():
         tool["function"]["parameters"]["properties"]["country"]["description"]
         == f"{param_2_first_line}\n{param_2_additional}"
     )
+
+
+@pytest.mark.asyncio
+async def test_function_to_tool_args_and_kwargs():
+    """Test that we do not include args and kwargs in the tool description"""
+
+    def get_weather(city: str, *args, **kwargs) -> str:
+        """Get the current temperature for a given location
+
+        :param city: City and country e.g. Bogotá, Colombia
+        """
+        return "25 degrees Celsius"
+
+    tool = LlmConversionHelpers.function_to_tool(get_weather)
+    assert (
+        tool["function"]["parameters"]["properties"]["city"]["description"]
+        == "City and country e.g. Bogotá, Colombia"
+    )
+    assert len(tool["function"]["parameters"]["properties"].keys()) == 1
